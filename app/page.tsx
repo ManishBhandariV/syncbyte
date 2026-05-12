@@ -1,65 +1,368 @@
-import Image from "next/image";
+import Link from "next/link";
+import { HeroCarousel } from "@/components/HeroCarousel";
+import { siteConfig } from "@/lib/config";
+import {
+  productCategories,
+  sampleReviews,
+  getCategoryUrl,
+  getProductUrl,
+} from "@/lib/data/products";
+import { getProductImage, getCustomerLogos, placeholderImage } from "@/lib/data/images";
 
-export default function Home() {
+const FEATURED = [
+  "fingerprint",
+  "face",
+  "boom-barrier",
+  "turnstiles",
+  "access-control",
+  "fingerprint-door-lock",
+  "metal-detectors",
+  "software-solutions",
+];
+
+const GOOGLE_REVIEWS = [
+  { name: "Rajesh Kumar", rating: 5, text: "Excellent biometric solutions! Installation was smooth and the support team is very responsive.", ago: "2 weeks ago", initial: "R" },
+  { name: "Priya Sharma", rating: 5, text: "Top quality products and great after-sales service. Highly recommend Syncbyte for access control.", ago: "1 month ago", initial: "P" },
+  { name: "Anand Mehta",  rating: 5, text: "Installed their face recognition system in our office. Works flawlessly. Great team!",                ago: "3 months ago", initial: "A" },
+];
+
+export default function HomePage() {
+  const customerLogos = getCustomerLogos();
+  const logosToShow = customerLogos.length > 0
+    ? customerLogos
+    : Array.from({ length: 10 }, (_, i) => `placeholder_${i + 1}`);
+  const allLogos = [...logosToShow, ...logosToShow];
+
+  const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <HeroCarousel />
+
+      {/* Featured Products */}
+      <section className="section featured-products">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Featured Products</h2>
+            <p className="section-subtitle">
+              Discover our most popular security and access control solutions
+            </p>
+          </div>
+          <div className="products-grid">
+            {FEATURED.map((catSlug) => {
+              const category = productCategories[catSlug];
+              const product = category?.products[0];
+              if (!category || !product) return null;
+              return (
+                <div className="product-card" key={catSlug}>
+                  <div className="product-image">
+                    <img src={getProductImage(product.id)} alt={product.name} />
+                    <div className="product-overlay">
+                      <Link
+                        href={getProductUrl(catSlug, product.id)}
+                        className="btn btn-secondary"
+                      >
+                        View Details
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="product-info">
+                    <span className="product-category">{category.name}</span>
+                    <h3 className="product-name">{product.name}</h3>
+                    <p className="product-desc">{product.short_desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="section-cta">
+            <Link href="/products" className="btn btn-primary btn-lg">
+              View All Products
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </section>
+
+      {/* Categories */}
+      <section className="section categories-section bg-light">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Product Categories</h2>
+            <p className="section-subtitle">
+              Browse our wide range of security solutions
+            </p>
+          </div>
+          <div className="categories-grid">
+            {Object.entries(productCategories).map(([slug, category]) => (
+              <Link key={slug} href={getCategoryUrl(slug)} className="category-card">
+                <div className="category-icon">
+                  <i className={`fas ${category.icon}`} />
+                </div>
+                <h3 className="category-name">{category.name}</h3>
+                <span className="category-count">{category.products.length} Products</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Sample Reviews */}
+      <section className="section reviews-section">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">What Our Customers Say</h2>
+            <p className="section-subtitle">Trusted by businesses across India</p>
+          </div>
+          <div className="reviews-grid">
+            {sampleReviews.map((r, i) => (
+              <div className="review-card" key={i}>
+                <div className="review-rating">
+                  {Array.from({ length: 5 }).map((_, n) => (
+                    <i
+                      key={n}
+                      className={`fas fa-star ${n < r.rating ? "filled" : "empty"}`}
+                    />
+                  ))}
+                </div>
+                <p className="review-text">&quot;{r.review}&quot;</p>
+                <div className="review-author">
+                  <div className="author-avatar">
+                    <i className="fas fa-user" />
+                  </div>
+                  <div className="author-info">
+                    <h4 className="author-name">{r.name}</h4>
+                    <p className="author-title">{r.designation}, {r.company}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="section-cta">
+            <Link href="/reviews" className="btn btn-outline">
+              View All Reviews
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Customer Logos */}
+      <section className="section customers-section bg-light">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Our Trusted Clients</h2>
+            <p className="section-subtitle">Proudly serving leading organizations</p>
+          </div>
+          <div className="customers-carousel" id="customersCarousel">
+            <div className="customers-track">
+              {allLogos.map((logo, i) => {
+                const isPlaceholder = logo.startsWith("placeholder_");
+                return (
+                  <div className="customer-logo" key={`${logo}-${i}`}>
+                    {isPlaceholder ? (
+                      <img
+                        src={placeholderImage(`Client ${logo.split("_")[1]}`)}
+                        alt="Client"
+                      />
+                    ) : (
+                      <img src={logo} alt="Customer Logo" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      <section className="section why-choose-us">
+        <div className="container">
+          <div className="section-header">
+            <h2 className="section-title">Why Choose Syncbyte?</h2>
+            <p className="section-subtitle">Your trusted partner in security solutions</p>
+          </div>
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon"><i className="fas fa-award" /></div>
+              <h3 className="feature-title">Quality Products</h3>
+              <p className="feature-desc">
+                We offer only the highest quality security products from trusted manufacturers
+              </p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon"><i className="fas fa-headset" /></div>
+              <h3 className="feature-title">Expert Support</h3>
+              <p className="feature-desc">
+                Our technical team provides comprehensive installation and after-sales support
+              </p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon"><i className="fas fa-truck-fast" /></div>
+              <h3 className="feature-title">Pan-India Service</h3>
+              <p className="feature-desc">
+                We deliver and service across all major cities in India
+              </p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon"><i className="fas fa-shield-check" /></div>
+              <h3 className="feature-title">Warranty Assured</h3>
+              <p className="feature-desc">
+                All our products come with manufacturer warranty and service guarantee
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="section cta-section">
+        <div className="container">
+          <div className="cta-content">
+            <h2>Ready to Secure Your Premises?</h2>
+            <p>Contact us today for a free consultation and quote</p>
+            <div className="cta-buttons">
+              <Link href="/contact" className="btn btn-primary btn-lg">Get in Touch</Link>
+              <a href={telHref} className="btn btn-secondary btn-lg">
+                <i className="fas fa-phone" /> Call Now
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Google Reviews */}
+      <section
+        className="section google-reviews-section"
+        style={{ background: "#f8fafc", padding: "60px 0" }}
+      >
+        <div className="container">
+          <div className="section-header" style={{ textAlign: "center", marginBottom: 40 }}>
+            <h2 className="section-title">What Our Customers Say</h2>
+            <p
+              className="section-subtitle"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <img
+                src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png"
+                alt="Google"
+                style={{ height: 20, verticalAlign: "middle" }}
+              />
+              &nbsp;Reviews
+              <span style={{ color: "#f59e0b", fontSize: "1.2rem" }}>★★★★★</span>
+            </p>
+          </div>
+
+          <div
+            id="google-reviews-embed"
+            style={{
+              minHeight: 300,
+              borderRadius: 12,
+              overflow: "hidden",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+              marginBottom: 32,
+              background: "#fff",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <iframe
+              src={siteConfig.googleMapsEmbed}
+              width="100%"
+              height={350}
+              style={{ border: 0, display: "block" }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))",
+              gap: 20,
+              marginBottom: 32,
+            }}
           >
-            Documentation
-          </a>
+            {GOOGLE_REVIEWS.map((r) => (
+              <div
+                key={r.name}
+                style={{
+                  background: "#fff",
+                  borderRadius: 12,
+                  padding: 22,
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+                  border: "1px solid #e8f4fd",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #1a365d, #0ea5e9)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: "1rem",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {r.initial}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: "#1a365d", fontSize: "0.9rem" }}>
+                      {r.name}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{r.ago}</div>
+                  </div>
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png"
+                    alt="Google"
+                    style={{ width: 20, height: 20 }}
+                  />
+                </div>
+                <div style={{ color: "#f59e0b", fontSize: "1rem", marginBottom: 8, letterSpacing: 1 }}>
+                  {"★".repeat(r.rating)}
+                </div>
+                <p style={{ color: "#555", fontSize: "0.88rem", lineHeight: 1.65, margin: 0 }}>
+                  {r.text}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <a
+              href="https://www.google.com/maps/place/Syncbyte+Innovations+Private+Limited/@12.9419281,77.5644271,18z/data=!4m8!3m7!1s0x3bae156a3bb7a3f1:0x45c9878ce517b865!8m2!3d12.9419281!4d77.5644271!9m1!1b1"
+              target="_blank"
+              rel="noopener"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#fff",
+                border: "2px solid #1a365d",
+                color: "#1a365d",
+                padding: "12px 30px",
+                borderRadius: 50,
+                fontWeight: 600,
+                fontSize: "0.9rem",
+                textDecoration: "none",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              }}
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png"
+                alt=""
+                style={{ width: 18 }}
+              />
+              Write a Google Review
+            </a>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+    </>
   );
 }
