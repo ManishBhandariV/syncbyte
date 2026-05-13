@@ -7,13 +7,9 @@ import {
   getProductUrl,
   totalProductCount,
 } from "@/lib/data/products";
-import { getProductImage } from "@/lib/data/images";
+import { loadProductMeta, sortByMeta, bestProductImage } from "@/lib/data/product-meta";
 
 type Params = { category: string };
-
-export async function generateStaticParams(): Promise<Params[]> {
-  return Object.keys(productCategories).map((category) => ({ category }));
-}
 
 export async function generateMetadata({ params }: { params: Promise<Params> }) {
   const { category } = await params;
@@ -32,6 +28,8 @@ export default async function CategoryPage({
 
   const total = totalProductCount();
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
+  const meta = await loadProductMeta();
+  const sortedProducts = sortByMeta(category.products, meta);
 
   return (
     <>
@@ -86,10 +84,10 @@ export default async function CategoryPage({
                 </div>
               </div>
               <div className="products-grid">
-                {category.products.map((product) => (
+                {sortedProducts.map((product) => (
                   <div className="product-card" key={product.id}>
                     <div className="product-image">
-                      <img src={getProductImage(product.id)} alt={product.name} />
+                      <img src={bestProductImage(product.id, meta)} alt={product.name} />
                       <div className="product-overlay">
                         <Link
                           href={getProductUrl(slug, product.id)}

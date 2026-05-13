@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeroCarousel } from "@/components/HeroCarousel";
+import { BrandsSection } from "@/components/BrandsSection";
 import { siteConfig } from "@/lib/config";
 import {
   productCategories,
@@ -7,7 +8,9 @@ import {
   getCategoryUrl,
   getProductUrl,
 } from "@/lib/data/products";
-import { getProductImage, getCustomerLogos, placeholderImage } from "@/lib/data/images";
+import { getCustomerLogos, placeholderImage } from "@/lib/data/images";
+import { loadProductMeta, sortByMeta, bestProductImage } from "@/lib/data/product-meta";
+import { getGoogleReviews } from "@/lib/data/google-reviews";
 
 const FEATURED = [
   "fingerprint",
@@ -20,14 +23,10 @@ const FEATURED = [
   "software-solutions",
 ];
 
-const GOOGLE_REVIEWS = [
-  { name: "Rajesh Kumar", rating: 5, text: "Excellent biometric solutions! Installation was smooth and the support team is very responsive.", ago: "2 weeks ago", initial: "R" },
-  { name: "Priya Sharma", rating: 5, text: "Top quality products and great after-sales service. Highly recommend Syncbyte for access control.", ago: "1 month ago", initial: "P" },
-  { name: "Anand Mehta",  rating: 5, text: "Installed their face recognition system in our office. Works flawlessly. Great team!",                ago: "3 months ago", initial: "A" },
-];
-
-export default function HomePage() {
+export default async function HomePage() {
+  const meta = await loadProductMeta();
   const customerLogos = getCustomerLogos();
+  const { reviews: googleReviews } = await getGoogleReviews();
   const logosToShow = customerLogos.length > 0
     ? customerLogos
     : Array.from({ length: 10 }, (_, i) => `placeholder_${i + 1}`);
@@ -38,6 +37,8 @@ export default function HomePage() {
   return (
     <>
       <HeroCarousel />
+
+      <BrandsSection />
 
       {/* Featured Products */}
       <section className="section featured-products">
@@ -51,12 +52,14 @@ export default function HomePage() {
           <div className="products-grid">
             {FEATURED.map((catSlug) => {
               const category = productCategories[catSlug];
-              const product = category?.products[0];
-              if (!category || !product) return null;
+              if (!category) return null;
+              const ordered = sortByMeta(category.products, meta);
+              const product = ordered[0];
+              if (!product) return null;
               return (
                 <div className="product-card" key={catSlug}>
                   <div className="product-image">
-                    <img src={getProductImage(product.id)} alt={product.name} />
+                    <img src={bestProductImage(product.id, meta)} alt={product.name} />
                     <div className="product-overlay">
                       <Link
                         href={getProductUrl(catSlug, product.id)}
@@ -282,55 +285,68 @@ export default function HomePage() {
               marginBottom: 32,
             }}
           >
-            {GOOGLE_REVIEWS.map((r) => (
-              <div
-                key={r.name}
-                style={{
-                  background: "#fff",
-                  borderRadius: 12,
-                  padding: 22,
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
-                  border: "1px solid #e8f4fd",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <div
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #1a365d, #0ea5e9)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#fff",
-                      fontWeight: 700,
-                      fontSize: "1rem",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {r.initial}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: "#1a365d", fontSize: "0.9rem" }}>
-                      {r.name}
+            {googleReviews.map((r, i) => {
+              const initial = r.author_name.charAt(0).toUpperCase();
+              return (
+                <div
+                  key={`${r.author_name}-${i}`}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 12,
+                    padding: 22,
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+                    border: "1px solid #e8f4fd",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    {r.profile_photo_url ? (
+                      <img
+                        src={r.profile_photo_url}
+                        alt={r.author_name}
+                        style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0 }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #1a365d, #0ea5e9)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: "1rem",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initial}
+                      </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: "#1a365d", fontSize: "0.9rem" }}>
+                        {r.author_name}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                        {r.relative_time_description}
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{r.ago}</div>
+                    <img
+                      src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png"
+                      alt="Google"
+                      style={{ width: 20, height: 20 }}
+                    />
                   </div>
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png"
-                    alt="Google"
-                    style={{ width: 20, height: 20 }}
-                  />
+                  <div style={{ color: "#f59e0b", fontSize: "1rem", marginBottom: 8, letterSpacing: 1 }}>
+                    {"★".repeat(r.rating)}
+                  </div>
+                  <p style={{ color: "#555", fontSize: "0.88rem", lineHeight: 1.65, margin: 0 }}>
+                    {r.text}
+                  </p>
                 </div>
-                <div style={{ color: "#f59e0b", fontSize: "1rem", marginBottom: 8, letterSpacing: 1 }}>
-                  {"★".repeat(r.rating)}
-                </div>
-                <p style={{ color: "#555", fontSize: "0.88rem", lineHeight: 1.65, margin: 0 }}>
-                  {r.text}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div style={{ textAlign: "center" }}>

@@ -68,7 +68,25 @@ CREATE TABLE IF NOT EXISTS contact_enquiries (
   requirement TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS product_meta (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id TEXT UNIQUE NOT NULL,
+  brand TEXT,
+  display_order INTEGER DEFAULT 0,
+  image_url TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_product_meta_brand ON product_meta(brand);
+CREATE INDEX IF NOT EXISTS idx_product_meta_order ON product_meta(display_order);
 `;
+
+// Best-effort migrations for already-existing schemas (e.g. local dev DB).
+// SQLite doesn't support ADD COLUMN IF NOT EXISTS, so we try/catch.
+const MIGRATIONS = [
+  "ALTER TABLE product_meta ADD COLUMN image_url TEXT",
+];
 
 export const sqliteDriver: DbDriver = {
   async all<T>(sql: string, params: unknown[] = []) {
@@ -88,6 +106,9 @@ export const sqliteDriver: DbDriver = {
     const db = getDb();
     for (const stmt of SCHEMA.split(";").map((s) => s.trim()).filter(Boolean)) {
       db.exec(stmt);
+    }
+    for (const m of MIGRATIONS) {
+      try { db.exec(m); } catch { /* column already exists — fine */ }
     }
   },
 };

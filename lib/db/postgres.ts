@@ -79,6 +79,19 @@ const SCHEMA_STATEMENTS = [
     requirement TEXT NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS product_meta (
+    id            SERIAL PRIMARY KEY,
+    product_id    TEXT UNIQUE NOT NULL,
+    brand         TEXT,
+    display_order INTEGER DEFAULT 0,
+    image_url     TEXT,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_product_meta_brand ON product_meta(brand)`,
+  `CREATE INDEX IF NOT EXISTS idx_product_meta_order ON product_meta(display_order)`,
+  // Idempotent migration for existing schemas that pre-date image_url.
+  `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS image_url TEXT`,
 ];
 
 // A statement that returns its inserted row. We rewrite trailing INSERTs to add RETURNING id.

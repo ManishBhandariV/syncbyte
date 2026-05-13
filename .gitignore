@@ -42,6 +42,10 @@ next-env.d.ts
 
 .vercel
 
+# IDEs
+.idea/
+.vscode/
+
 # local SQLite DB (dev only — production uses Neon Postgres)
 /data/*.db
 /data/*.db-shm

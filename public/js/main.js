@@ -167,10 +167,11 @@ function initCustomersCarousel() {
     const track = document.querySelector('.customers-track');
     if (!track) return;
 
-    // Calculate animation duration based on number of logos and 3-second interval
+    // Calculate animation duration based on number of logos.
+    // 2.1s per logo = 30% faster than the original 3s.
     const logos = track.querySelectorAll('.customer-logo');
     const logoCount = logos.length / 2; // Divided by 2 because logos are duplicated
-    const duration = logoCount * 3; // 3 seconds per logo
+    const duration = logoCount * 2.1;
 
     track.style.animationDuration = duration + 's';
 

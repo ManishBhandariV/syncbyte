@@ -1,6 +1,7 @@
 "use server";
 
 import { getDb } from "@/lib/db";
+import { sendContactEnquiry } from "@/lib/email";
 
 export type ContactFormResult = {
   ok: boolean;
@@ -34,7 +35,6 @@ export async function submitEnquiry(
       "INSERT INTO contact_enquiries (name, phone, email, product, requirement) VALUES (?, ?, ?, ?, ?)",
       [name, phone, email, product || null, requirement],
     );
-    return { ok: true };
   } catch (e) {
     console.error("[contact] insert failed", e);
     return {
@@ -42,4 +42,12 @@ export async function submitEnquiry(
       error: "Sorry, something went wrong saving your enquiry. Please try again.",
     };
   }
+
+  // Email is best-effort: a delivery failure must not break the user flow.
+  // The enquiry is already saved in the DB and visible at /admin/enquiries.
+  void sendContactEnquiry({ name, phone, email, product, requirement }).catch(
+    (e) => console.error("[contact] email send threw", e),
+  );
+
+  return { ok: true };
 }

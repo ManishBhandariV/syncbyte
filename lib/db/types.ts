@@ -58,3 +58,15 @@ export type ContactEnquiry = {
   requirement: string;
   created_at: string;
 };
+
+/**
+ * Per-product overrides editable from the admin panel: brand + display order.
+ * Joined against the static product list to enrich it.
+ */
+export type ProductMeta = {
+  id: number;
+  product_id: string;
+  brand: string | null;
+  display_order: number;
+  image_url: string | null;
+};

@@ -5,6 +5,7 @@ import { siteConfig } from "@/lib/config";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackToTop } from "@/components/BackToTop";
+import { ServicesTicker } from "@/components/ServicesTicker";
 
 export const metadata: Metadata = {
   title: {
@@ -12,6 +13,11 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.companyName}`,
   },
   description: siteConfig.siteDescription,
+  icons: {
+    icon: "/images/favicon.png",
+    shortcut: "/images/favicon.png",
+    apple: "/images/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -58,6 +64,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <main className="main-content">{children}</main>
         <Footer />
         <BackToTop />
+        <ServicesTicker />
         <Script src="/js/main.js" strategy="afterInteractive" />
       </body>
     </html>

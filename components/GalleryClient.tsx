@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/config";
 
-type Video = { id: string; title: string; thumbnail: string };
+type Video = { id: string; title: string; thumbnail: string; url?: string };
 type ProjectImage = { file: string; title: string; location: string };
 
 type Filter = "all" | "videos" | "images";
@@ -72,7 +72,7 @@ export function GalleryClient({
           {videos.map((v) => (
             <a
               key={v.id}
-              href={siteConfig.social.youtube}
+              href={v.url ?? siteConfig.social.youtube}
               target="_blank"
               rel="noopener"
               className="video-card"

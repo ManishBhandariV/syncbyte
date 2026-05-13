@@ -2,8 +2,11 @@ import Link from "next/link";
 import { sampleReviews } from "@/lib/data/products";
 import { siteConfig } from "@/lib/config";
 import { ReviewForm } from "@/components/ReviewForm";
+import { getDb } from "@/lib/db";
+import type { Review } from "@/lib/db/types";
 
 export const metadata = { title: "Customer Reviews" };
+export const revalidate = 60; // re-fetch approved reviews every minute
 
 const GOOGLE_REVIEWS = [
   { name: "Vikram Singh", rating: 5, review: "Excellent service and top-quality products. The team at Syncbyte is very professional and helpful.", date: "2 months ago" },
@@ -19,9 +22,36 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function ReviewsPage() {
+export default async function ReviewsPage() {
+  // Load admin-approved reviews from DB and prepend them to the seed list.
+  let approvedDb: Array<{
+    name: string;
+    company: string;
+    designation: string;
+    rating: number;
+    review: string;
+    date: string;
+  }> = [];
+  try {
+    const db = await getDb();
+    const rows = await db.all<Review>(
+      "SELECT * FROM reviews WHERE status = 'approved' ORDER BY created_at DESC",
+    );
+    approvedDb = rows.map((r) => ({
+      name: r.name,
+      company: r.company ?? "",
+      designation: r.designation ?? "",
+      rating: r.rating,
+      review: r.review,
+      date: r.created_at,
+    }));
+  } catch (e) {
+    console.warn("[reviews] DB read failed", e);
+  }
+  const customerReviews = [...approvedDb, ...sampleReviews];
+
   const allReviews = [
-    ...sampleReviews.map((r) => ({ ...r, source: "customer" as const })),
+    ...customerReviews.map((r) => ({ ...r, source: "customer" as const })),
     ...GOOGLE_REVIEWS.map((r) => ({
       ...r,
       designation: "",
@@ -126,7 +156,7 @@ export default function ReviewsPage() {
             <div className="reviews-list">
               <h2 className="section-title">What Our Customers Say</h2>
 
-              {sampleReviews.map((r, i) => (
+              {customerReviews.map((r, i) => (
                 <div className="review-card-large" key={`s-${i}`}>
                   <div className="review-header">
                     <div className="reviewer-avatar">

@@ -1,10 +1,12 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
-import { clearSession, setSession } from "@/lib/auth";
+import { clearSession, setSession, getSession } from "@/lib/auth";
+import { toSlug } from "@/lib/data/products";
 import type { AdminUser } from "@/lib/db/types";
 
 export type LoginResult = { ok: boolean; error?: string };
@@ -112,4 +114,119 @@ export async function deleteDownload(formData: FormData): Promise<void> {
   await db.run("DELETE FROM product_downloads WHERE id = ?", [id]);
   revalidatePath("/admin");
   revalidatePath("/products", "layout");
+}
+
+// ── Product meta (brand + display order + image) ──────────────────────────────
+export async function saveProductMeta(formData: FormData): Promise<void> {
+  const productId = String(formData.get("product_id") ?? "");
+  const brand = String(formData.get("brand") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (!productId) return;
+
+  const db = await getDb();
+  const existing = await db.get<{ id: number }>(
+    "SELECT id FROM product_meta WHERE product_id = ?",
+    [productId],
+  );
+  if (existing) {
+    await db.run(
+      "UPDATE product_meta SET brand = ?, display_order = ? WHERE product_id = ?",
+      [brand || null, displayOrder, productId],
+    );
+  } else {
+    await db.run(
+      "INSERT INTO product_meta (product_id, brand, display_order) VALUES (?, ?, ?)",
+      [productId, brand || null, displayOrder],
+    );
+  }
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
+  revalidatePath("/");
+}
+
+/**
+ * Upload an image file to Vercel Blob and store the URL on product_meta.image_url.
+ * The product detail page will use this URL as the primary image.
+ */
+export async function uploadProductImage(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const productId = String(formData.get("product_id") ?? "");
+  const file = formData.get("image") as File | null;
+  if (!productId || !file || file.size === 0) return;
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error(
+      "Vercel Blob isn't configured. Install the Blob integration on Vercel " +
+        "(Dashboard → Storage → Create Database → Blob) — it auto-injects BLOB_READ_WRITE_TOKEN.",
+    );
+  }
+
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+  const blob = await put(`products/${toSlug(productId)}-${Date.now()}.${ext}`, file, {
+    access: "public",
+    contentType: file.type || undefined,
+  });
+
+  const db = await getDb();
+  const existing = await db.get<{ id: number }>(
+    "SELECT id FROM product_meta WHERE product_id = ?",
+    [productId],
+  );
+  if (existing) {
+    await db.run(
+      "UPDATE product_meta SET image_url = ? WHERE product_id = ?",
+      [blob.url, productId],
+    );
+  } else {
+    await db.run(
+      "INSERT INTO product_meta (product_id, image_url) VALUES (?, ?)",
+      [productId, blob.url],
+    );
+  }
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
+  revalidatePath("/");
+}
+
+export async function clearProductImage(formData: FormData): Promise<void> {
+  const productId = String(formData.get("product_id") ?? "");
+  if (!productId) return;
+  const db = await getDb();
+  await db.run(
+    "UPDATE product_meta SET image_url = NULL WHERE product_id = ?",
+    [productId],
+  );
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
+}
+
+// ── Reviews moderation ────────────────────────────────────────────────────────
+export async function approveReview(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("UPDATE reviews SET status = 'approved' WHERE id = ?", [id]);
+  revalidatePath("/admin/reviews");
+  revalidatePath("/reviews");
+  revalidatePath("/");
+}
+
+export async function rejectReview(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("UPDATE reviews SET status = 'rejected' WHERE id = ?", [id]);
+  revalidatePath("/admin/reviews");
+  revalidatePath("/reviews");
+}
+
+export async function deleteReview(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM reviews WHERE id = ?", [id]);
+  revalidatePath("/admin/reviews");
+  revalidatePath("/reviews");
 }

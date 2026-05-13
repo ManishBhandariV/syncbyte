@@ -7,6 +7,7 @@ import {
   getProductUrl,
 } from "@/lib/data/products";
 import { getProductImage } from "@/lib/data/images";
+import { loadProductMeta, bestProductImage } from "@/lib/data/product-meta";
 import { ProductTabs } from "@/components/ProductTabs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { getDb } from "@/lib/db";
@@ -65,7 +66,8 @@ export default async function ProductDetailPage({
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
 
-  const mainImage = getProductImage(product.id);
+  const meta = await loadProductMeta();
+  const mainImage = bestProductImage(product.id, meta);
 
   // DB-backed specs/downloads. Tolerate DB unavailability (empty arrays).
   let dbSpecs: ProductSpec[] = [];
@@ -302,7 +304,7 @@ export default async function ProductDetailPage({
             {relatedProducts.map((rp) => (
               <div className="product-card product-card-compact" key={rp.id}>
                 <div className="product-image">
-                  <img src={getProductImage(rp.id)} alt={rp.name} />
+                  <img src={bestProductImage(rp.id, meta)} alt={rp.name} />
                   <div className="product-overlay">
                     <Link
                       href={getProductUrl(categorySlug, rp.id)}

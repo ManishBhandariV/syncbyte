@@ -280,21 +280,38 @@ export const sampleReviews: SampleReview[] = [
   },
 ];
 
+/**
+ * URL-safe slug from a product id/name.
+ * Strips non-alphanumeric chars, lowercases, collapses runs of `-`.
+ */
+export function toSlug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function getCategoryUrl(slug: string): string {
   return `/products/${encodeURIComponent(slug)}`;
 }
 
 export function getProductUrl(categorySlug: string, productId: string): string {
-  return `/products/${encodeURIComponent(categorySlug)}/${encodeURIComponent(productId)}`;
+  return `/products/${encodeURIComponent(categorySlug)}/${toSlug(productId)}`;
 }
 
+/**
+ * Look up a product by URL slug (slugified id) or, as a fallback, by exact id.
+ */
 export function findProduct(
   categorySlug: string,
-  productId: string,
+  productSlugOrId: string,
 ): { category: ProductCategory; product: Product } | null {
   const category = productCategories[categorySlug];
   if (!category) return null;
-  const product = category.products.find((p) => p.id === productId);
+  const target = productSlugOrId.toLowerCase();
+  const product =
+    category.products.find((p) => toSlug(p.id) === target) ??
+    category.products.find((p) => p.id === productSlugOrId);
   if (!product) return null;
   return { category, product };
 }
