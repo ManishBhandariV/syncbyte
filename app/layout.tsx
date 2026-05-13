@@ -13,11 +13,7 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.companyName}`,
   },
   description: siteConfig.siteDescription,
-  icons: {
-    icon: "/images/favicon.png",
-    shortcut: "/images/favicon.png",
-    apple: "/images/favicon.png",
-  },
+  // Favicon is auto-served by app/icon.tsx (Next.js App Router convention).
 };
 
 export default function RootLayout({
