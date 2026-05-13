@@ -3,12 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import type { Review } from "@/lib/db/types";
-import {
-  approveReview,
-  rejectReview,
-  deleteReview,
-  logout,
-} from "../actions";
+import { approveReview, rejectReview, deleteReview } from "../actions";
+import { AdminTopBar } from "@/components/AdminTopBar";
 
 export const metadata = { title: "Admin · Reviews" };
 export const dynamic = "force-dynamic";
@@ -57,67 +53,12 @@ export default async function AdminReviewsPage({
       }}
     >
       <div style={{ flex: 1 }}>
-        <div
-          style={{
-            background: "#fff",
-            padding: "16px 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <h1 style={{ fontSize: "1.1rem", color: "#1a365d" }}>
-              <i className="fas fa-star" /> Reviews
-            </h1>
-            <nav style={{ display: "flex", gap: 14 }}>
-              <Link
-                href="/admin"
-                style={{ fontSize: "0.85rem", color: "#64748b", textDecoration: "none" }}
-              >
-                Products
-              </Link>
-              <Link
-                href="/admin/reviews"
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#0ea5e9",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Reviews
-              </Link>
-              <Link
-                href="/admin/enquiries"
-                style={{ fontSize: "0.85rem", color: "#64748b", textDecoration: "none" }}
-              >
-                Enquiries
-              </Link>
-            </nav>
-          </div>
-          <div>
-            <span style={{ color: "#94a3b8", fontSize: "0.82rem", marginRight: 16 }}>
-              Logged in as <strong>{session.username}</strong>
-            </span>
-            <form action={logout} style={{ display: "inline" }}>
-              <button
-                type="submit"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#64748b",
-                  fontSize: "0.85rem",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                <i className="fas fa-sign-out-alt" /> Logout
-              </button>
-            </form>
-          </div>
-        </div>
+        <AdminTopBar
+          title="Reviews"
+          username={session.username}
+          activeTab="reviews"
+          pendingReviewCount={countMap.pending ?? 0}
+        />
 
         <div style={{ padding: 28 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>

@@ -120,7 +120,7 @@ export function GalleryClient({
             <div className="image-card" key={img.file} onClick={() => setLightboxIndex(i)}>
               <div className="image-wrapper">
                 <img
-                  src={`/images/gallery/${encodeURIComponent(img.file)}`}
+                  src={img.file.startsWith("http") || img.file.startsWith("/") ? img.file : `/images/gallery/${encodeURIComponent(img.file)}`}
                   alt={img.title}
                   onError={(e) => {
                     e.currentTarget.src = `https://via.placeholder.com/400x300/e2e8f0/1a365d?text=${encodeURIComponent(img.title)}`;
@@ -174,7 +174,11 @@ export function GalleryClient({
         <div className="lightbox-content">
           {current && (
             <img
-              src={`/images/gallery/${encodeURIComponent(current.file)}`}
+              src={
+                current.file.startsWith("http") || current.file.startsWith("/")
+                  ? current.file
+                  : `/images/gallery/${encodeURIComponent(current.file)}`
+              }
               alt={current.title}
               onError={(e) => {
                 e.currentTarget.src = `https://via.placeholder.com/800x600/e2e8f0/1a365d?text=${encodeURIComponent(current.title)}`;

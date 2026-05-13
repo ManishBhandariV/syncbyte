@@ -80,6 +80,29 @@ CREATE TABLE IF NOT EXISTS product_meta (
 );
 CREATE INDEX IF NOT EXISTS idx_product_meta_brand ON product_meta(brand);
 CREATE INDEX IF NOT EXISTS idx_product_meta_order ON product_meta(display_order);
+
+CREATE TABLE IF NOT EXISTS gallery_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  image_url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  location TEXT,
+  display_order INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS gallery_videos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  youtube_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  display_order INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS brand_logos (
+  brand_slug TEXT PRIMARY KEY,
+  logo_url TEXT NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 // Best-effort migrations for already-existing schemas (e.g. local dev DB).

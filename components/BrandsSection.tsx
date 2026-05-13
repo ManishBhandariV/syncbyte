@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { BRANDS } from "@/lib/data/brands";
-import { getBrandLogo } from "@/lib/data/brands-server";
+import { loadBrandLogos, resolveBrandLogo } from "@/lib/data/brand-logos-server";
 
-export function BrandsSection() {
+export async function BrandsSection() {
+  const dbLogos = await loadBrandLogos();
+
   return (
     <section className="section brands-section">
       <div className="container">
@@ -14,7 +16,7 @@ export function BrandsSection() {
         </div>
         <div className="brands-grid">
           {BRANDS.map((brand) => {
-            const logo = getBrandLogo(brand.slug);
+            const logo = resolveBrandLogo(brand.slug, dbLogos);
             return (
               <Link
                 key={brand.slug}

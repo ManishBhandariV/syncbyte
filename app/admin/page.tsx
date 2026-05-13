@@ -1,14 +1,13 @@
-import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { productCategories } from "@/lib/data/products";
 import type { ProductSpec, ProductDownload, ProductMeta } from "@/lib/db/types";
-import { logout } from "./actions";
 import { AdminLogin } from "@/components/AdminLogin";
 import { AdminProductSearch } from "@/components/AdminProductSearch";
 import { SpecsPanel } from "@/components/SpecsPanel";
 import { DownloadsPanel } from "@/components/DownloadsPanel";
 import { MetaPanel } from "@/components/MetaPanel";
+import { AdminTopBar } from "@/components/AdminTopBar";
 
 export const metadata = { title: "Admin Panel" };
 // Admin must always be dynamic (session cookie).
@@ -76,92 +75,12 @@ export default async function AdminPage({
 
       {/* Main content */}
       <div style={{ flex: 1, background: "#f0f4f8", overflowX: "hidden" }}>
-        <div
-          style={{
-            background: "#fff",
-            padding: "16px 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-            position: "sticky",
-            top: 0,
-            zIndex: 100,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <h1 style={{ fontSize: "1.1rem", color: "#1a365d" }}>
-              Managing: <strong>{selectedId || "(none)"}</strong>
-            </h1>
-            <nav style={{ display: "flex", gap: 14 }}>
-              <Link
-                href="/admin"
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#0ea5e9",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Products
-              </Link>
-              <Link
-                href="/admin/reviews"
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#64748b",
-                  textDecoration: "none",
-                }}
-              >
-                Reviews
-                {pendingReviewCount > 0 && (
-                  <span
-                    style={{
-                      background: "#ef4444",
-                      color: "#fff",
-                      borderRadius: 10,
-                      padding: "1px 7px",
-                      fontSize: "0.7rem",
-                      marginLeft: 6,
-                    }}
-                  >
-                    {pendingReviewCount}
-                  </span>
-                )}
-              </Link>
-              <Link
-                href="/admin/enquiries"
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#64748b",
-                  textDecoration: "none",
-                }}
-              >
-                Enquiries
-              </Link>
-            </nav>
-          </div>
-          <div>
-            <span style={{ color: "#94a3b8", fontSize: "0.82rem", marginRight: 16 }}>
-              Logged in as <strong>{session.username}</strong>
-            </span>
-            <form action={logout} style={{ display: "inline" }}>
-              <button
-                type="submit"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#64748b",
-                  fontSize: "0.85rem",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                <i className="fas fa-sign-out-alt" /> Logout
-              </button>
-            </form>
-          </div>
-        </div>
+        <AdminTopBar
+          title={`Managing: ${selectedId || "(none)"}`}
+          username={session.username}
+          activeTab="products"
+          pendingReviewCount={pendingReviewCount}
+        />
 
         <div style={{ padding: 28 }}>
           {selectedId ? (

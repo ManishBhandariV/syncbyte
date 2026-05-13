@@ -92,6 +92,27 @@ const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_product_meta_order ON product_meta(display_order)`,
   // Idempotent migration for existing schemas that pre-date image_url.
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS image_url TEXT`,
+
+  `CREATE TABLE IF NOT EXISTS gallery_images (
+    id            SERIAL PRIMARY KEY,
+    image_url     TEXT NOT NULL,
+    title         TEXT NOT NULL,
+    location      TEXT,
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS gallery_videos (
+    id            SERIAL PRIMARY KEY,
+    youtube_id    TEXT NOT NULL,
+    title         TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS brand_logos (
+    brand_slug TEXT PRIMARY KEY,
+    logo_url   TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
 ];
 
 // A statement that returns its inserted row. We rewrite trailing INSERTs to add RETURNING id.

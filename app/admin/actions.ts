@@ -230,3 +230,167 @@ export async function deleteReview(formData: FormData): Promise<void> {
   revalidatePath("/admin/reviews");
   revalidatePath("/reviews");
 }
+
+// ── Gallery: project photos ───────────────────────────────────────────────────
+function requireBlob(): void {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error(
+      "Vercel Blob isn't configured. Install Blob on Vercel " +
+        "(Dashboard → Storage → Create → Blob → Connect to project) — " +
+        "it auto-injects BLOB_READ_WRITE_TOKEN.",
+    );
+  }
+}
+
+export async function uploadGalleryImage(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  const file = formData.get("image") as File | null;
+  if (!title || !file || file.size === 0) return;
+
+  requireBlob();
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+  const safeTitle = toSlug(title) || "image";
+  const blob = await put(
+    `gallery/${safeTitle}-${Date.now()}.${ext}`,
+    file,
+    { access: "public", contentType: file.type || undefined },
+  );
+
+  const db = await getDb();
+  await db.run(
+    "INSERT INTO gallery_images (image_url, title, location, display_order) VALUES (?, ?, ?, ?)",
+    [blob.url, title, location || null, displayOrder],
+  );
+  revalidatePath("/admin/gallery");
+  revalidatePath("/gallery");
+}
+
+export async function updateGalleryImage(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  const title = String(formData.get("title") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (id <= 0 || !title) return;
+  const db = await getDb();
+  await db.run(
+    "UPDATE gallery_images SET title = ?, location = ?, display_order = ? WHERE id = ?",
+    [title, location || null, displayOrder, id],
+  );
+  revalidatePath("/admin/gallery");
+  revalidatePath("/gallery");
+}
+
+export async function deleteGalleryImage(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM gallery_images WHERE id = ?", [id]);
+  revalidatePath("/admin/gallery");
+  revalidatePath("/gallery");
+}
+
+// ── Gallery: pinned YouTube videos ────────────────────────────────────────────
+/**
+ * Extract the 11-char YouTube video id from any common URL shape.
+ * Returns null if the input doesn't look like one.
+ */
+function extractYouTubeId(input: string): string | null {
+  const s = input.trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const patterns = [
+    /[?&]v=([A-Za-z0-9_-]{11})/,            // watch?v=...
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,        // youtu.be/...
+    /\/embed\/([A-Za-z0-9_-]{11})/,          // /embed/...
+    /\/shorts\/([A-Za-z0-9_-]{11})/,         // /shorts/...
+  ];
+  for (const re of patterns) {
+    const m = s.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+export async function saveGalleryVideo(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  const rawUrl = String(formData.get("youtube_url") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  const youtubeId = extractYouTubeId(rawUrl);
+  if (!youtubeId || !title) return;
+
+  const db = await getDb();
+  if (id > 0) {
+    await db.run(
+      "UPDATE gallery_videos SET youtube_id = ?, title = ?, display_order = ? WHERE id = ?",
+      [youtubeId, title, displayOrder, id],
+    );
+  } else {
+    await db.run(
+      "INSERT INTO gallery_videos (youtube_id, title, display_order) VALUES (?, ?, ?)",
+      [youtubeId, title, displayOrder],
+    );
+  }
+  revalidatePath("/admin/gallery");
+  revalidatePath("/gallery");
+}
+
+export async function deleteGalleryVideo(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM gallery_videos WHERE id = ?", [id]);
+  revalidatePath("/admin/gallery");
+  revalidatePath("/gallery");
+}
+
+// ── Brand logos ───────────────────────────────────────────────────────────────
+export async function uploadBrandLogo(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const brandSlug = String(formData.get("brand_slug") ?? "").trim();
+  const file = formData.get("logo") as File | null;
+  if (!brandSlug || !file || file.size === 0) return;
+
+  requireBlob();
+  const ext = file.name.includes(".") ? file.name.split(".").pop() : "png";
+  const blob = await put(
+    `brands/${brandSlug}-${Date.now()}.${ext}`,
+    file,
+    { access: "public", contentType: file.type || undefined },
+  );
+
+  const db = await getDb();
+  const existing = await db.get<{ brand_slug: string }>(
+    "SELECT brand_slug FROM brand_logos WHERE brand_slug = ?",
+    [brandSlug],
+  );
+  if (existing) {
+    await db.run(
+      "UPDATE brand_logos SET logo_url = ? WHERE brand_slug = ?",
+      [blob.url, brandSlug],
+    );
+  } else {
+    await db.run(
+      "INSERT INTO brand_logos (brand_slug, logo_url) VALUES (?, ?)",
+      [brandSlug, blob.url],
+    );
+  }
+  revalidatePath("/admin/brands");
+  revalidatePath("/");
+  revalidatePath("/products", "layout");
+}
+
+export async function clearBrandLogo(formData: FormData): Promise<void> {
+  const brandSlug = String(formData.get("brand_slug") ?? "").trim();
+  if (!brandSlug) return;
+  const db = await getDb();
+  await db.run("DELETE FROM brand_logos WHERE brand_slug = ?", [brandSlug]);
+  revalidatePath("/admin/brands");
+  revalidatePath("/");
+}

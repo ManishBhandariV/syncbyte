@@ -1,31 +1,49 @@
 import Link from "next/link";
 import { GalleryClient } from "@/components/GalleryClient";
 import { getYouTubeVideos } from "@/lib/data/youtube";
+import { loadGalleryImages, loadGalleryVideos } from "@/lib/data/gallery-server";
 
 export const metadata = { title: "Gallery" };
 export const revalidate = 3600;
 
-const IMAGES = [
+// Static fallback shown only if there are no DB rows and no project images uploaded.
+const FALLBACK_IMAGES = [
   { file: "project1.jpg", title: "Corporate Office Installation", location: "Bangalore" },
-  { file: "project2.jpg", title: "Hospital Access Control", location: "Chennai" },
-  { file: "project3.jpg", title: "Factory Turnstile Setup", location: "Mumbai" },
-  { file: "project4.jpg", title: "Hotel Lock Implementation", location: "Delhi" },
-  { file: "project5.jpg", title: "Government Building Security", location: "Hyderabad" },
-  { file: "project6.jpg", title: "School Biometric System", location: "Pune" },
-  { file: "project7.jpg", title: "Mall Security Installation", location: "Kolkata" },
-  { file: "project8.jpg", title: "Apartment Complex Access", location: "Bangalore" },
-  { file: "project9.jpg", title: "IT Park Security Solution", location: "Noida" },
+  { file: "project2.jpg", title: "Hospital Access Control",       location: "Chennai" },
+  { file: "project3.jpg", title: "Factory Turnstile Setup",       location: "Mumbai" },
 ];
 
 export default async function GalleryPage() {
-  const videosFromYouTube = await getYouTubeVideos();
-  // Fallback to placeholders if the feed is unreachable, so the page never looks empty.
-  const videos = videosFromYouTube.length > 0
-    ? videosFromYouTube
-    : [
-        { id: "video1", title: "Biometric Access Control Demo", thumbnail: "https://via.placeholder.com/400x225/1a365d/ffffff?text=Video+1" },
-        { id: "video2", title: "Turnstile Installation Guide",  thumbnail: "https://via.placeholder.com/400x225/2d3748/ffffff?text=Video+2" },
-      ];
+  // Videos: admin-curated rows first, then any extras from the YouTube channel RSS.
+  const [pinnedVideos, rssVideos] = await Promise.all([
+    loadGalleryVideos(),
+    getYouTubeVideos(),
+  ]);
+  const pinnedIds = new Set(pinnedVideos.map((v) => v.youtube_id));
+  const pinnedAsCards = pinnedVideos.map((v) => ({
+    id: v.youtube_id,
+    title: v.title,
+    thumbnail: `https://i.ytimg.com/vi/${v.youtube_id}/hqdefault.jpg`,
+    url: `https://www.youtube.com/watch?v=${v.youtube_id}`,
+  }));
+  const rssDeduped = rssVideos.filter((v) => !pinnedIds.has(v.id));
+  const allVideos =
+    pinnedAsCards.length + rssDeduped.length > 0
+      ? [...pinnedAsCards, ...rssDeduped]
+      : [
+          { id: "video1", title: "Biometric Access Control Demo", thumbnail: "https://via.placeholder.com/400x225/1a365d/ffffff?text=Video+1" },
+        ];
+
+  // Images: admin-uploaded first; fall back to bundled project placeholders.
+  const dbImages = await loadGalleryImages();
+  const images =
+    dbImages.length > 0
+      ? dbImages.map((g) => ({
+          file: g.image_url, // already an absolute Blob URL
+          title: g.title,
+          location: g.location ?? "",
+        }))
+      : FALLBACK_IMAGES;
 
   return (
     <>
@@ -42,7 +60,7 @@ export default async function GalleryPage() {
 
       <section className="section gallery-section">
         <div className="container">
-          <GalleryClient videos={videos} images={IMAGES} />
+          <GalleryClient videos={allVideos} images={images} />
         </div>
       </section>
     </>

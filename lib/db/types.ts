@@ -70,3 +70,26 @@ export type ProductMeta = {
   display_order: number;
   image_url: string | null;
 };
+
+export type GalleryImage = {
+  id: number;
+  image_url: string;
+  title: string;
+  location: string | null;
+  display_order: number;
+  created_at: string;
+};
+
+export type GalleryVideo = {
+  id: number;
+  youtube_id: string;
+  title: string;
+  display_order: number;
+  created_at: string;
+};
+
+export type BrandLogo = {
+  brand_slug: string;
+  logo_url: string;
+  updated_at: string;
+};
