@@ -7,7 +7,12 @@ import {
   getProductUrl,
   totalProductCount,
 } from "@/lib/data/products";
-import { loadProductMeta, sortByMeta, bestProductImage } from "@/lib/data/product-meta";
+import {
+  loadProductMeta,
+  sortByMeta,
+  bestProductImage,
+  displayName,
+} from "@/lib/data/product-meta";
 
 type Params = { category: string };
 
@@ -84,10 +89,12 @@ export default async function CategoryPage({
                 </div>
               </div>
               <div className="products-grid">
-                {sortedProducts.map((product) => (
+                {sortedProducts.map((product) => {
+                  const name = displayName(product, meta);
+                  return (
                   <div className="product-card" key={product.id}>
                     <div className="product-image">
-                      <img src={bestProductImage(product.id, meta)} alt={product.name} />
+                      <img src={bestProductImage(product.id, meta)} alt={name} />
                       <div className="product-overlay">
                         <Link
                           href={getProductUrl(slug, product.id)}
@@ -99,7 +106,7 @@ export default async function CategoryPage({
                     </div>
                     <div className="product-info">
                       <span className="product-category">{category.name}</span>
-                      <h3 className="product-name">{product.name}</h3>
+                      <h3 className="product-name">{name}</h3>
                       <p className="product-desc">{product.short_desc}</p>
                       <Link
                         href={getProductUrl(slug, product.id)}
@@ -109,7 +116,8 @@ export default async function CategoryPage({
                       </Link>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

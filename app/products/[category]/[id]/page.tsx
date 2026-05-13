@@ -7,7 +7,7 @@ import {
   getProductUrl,
 } from "@/lib/data/products";
 import { getProductImage } from "@/lib/data/images";
-import { loadProductMeta, bestProductImage } from "@/lib/data/product-meta";
+import { loadProductMeta, bestProductImage, displayName } from "@/lib/data/product-meta";
 import { ProductTabs } from "@/components/ProductTabs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { getDb } from "@/lib/db";
@@ -18,7 +18,9 @@ type Params = { category: string; id: string };
 export async function generateMetadata({ params }: { params: Promise<Params> }) {
   const { category, id } = await params;
   const found = findProduct(category, id);
-  return { title: found?.product.name ?? "Product" };
+  if (!found) return { title: "Product" };
+  const meta = await loadProductMeta();
+  return { title: displayName(found.product, meta) };
 }
 
 const DEFAULT_SPECS: Array<[string, string]> = [
@@ -53,11 +55,15 @@ export default async function ProductDetailPage({
   if (!found) notFound();
   const { category, product } = found;
 
+  const meta = await loadProductMeta();
+  const mainImage = bestProductImage(product.id, meta);
+  const name = displayName(product, meta);
+
   const cataloguePath = `/product-catalogues/${product.id}.pdf`;
   const shareUrlAbs = `https://syncbyte.example${getProductUrl(categorySlug, product.id)}`;
 
   const specifications: Array<[string, string]> = [
-    ["Model", product.name],
+    ["Model", name],
     ["Category", category.name],
     ...DEFAULT_SPECS,
   ];
@@ -65,9 +71,6 @@ export default async function ProductDetailPage({
   const relatedProducts = category.products
     .filter((p) => p.id !== product.id)
     .slice(0, 4);
-
-  const meta = await loadProductMeta();
-  const mainImage = bestProductImage(product.id, meta);
 
   // DB-backed specs/downloads. Tolerate DB unavailability (empty arrays).
   let dbSpecs: ProductSpec[] = [];
@@ -90,7 +93,7 @@ export default async function ProductDetailPage({
     <>
       <section className="page-banner">
         <div className="container">
-          <h1 className="page-title">{product.name}</h1>
+          <h1 className="page-title">{name}</h1>
           <nav className="breadcrumb">
             <Link href="/">Home</Link>
             <span>/</span>
@@ -98,7 +101,7 @@ export default async function ProductDetailPage({
             <span>/</span>
             <Link href={getCategoryUrl(categorySlug)}>{category.name}</Link>
             <span>/</span>
-            <span>{product.name}</span>
+            <span>{name}</span>
           </nav>
         </div>
       </section>
@@ -109,14 +112,14 @@ export default async function ProductDetailPage({
             <ProductImageGallery
               mainImage={mainImage}
               productId={product.id}
-              productName={product.name}
+              productName={name}
             />
 
             <div className="product-detail-info">
               <span className="product-category-badge">
                 <i className={`fas ${category.icon}`} /> {category.name}
               </span>
-              <h1 className="product-detail-title">{product.name}</h1>
+              <h1 className="product-detail-title">{name}</h1>
               <p className="product-detail-desc">{product.short_desc}</p>
 
               <div className="product-highlights">
@@ -135,7 +138,7 @@ export default async function ProductDetailPage({
                   <i className="fas fa-download" /> Download Catalogue
                 </a>
                 <Link
-                  href={`/contact?product=${encodeURIComponent(product.name)}`}
+                  href={`/contact?product=${encodeURIComponent(name)}`}
                   className="btn btn-secondary btn-lg"
                 >
                   <i className="fas fa-envelope" /> Enquire Now
@@ -153,7 +156,7 @@ export default async function ProductDetailPage({
                   <i className="fab fa-facebook-f" />
                 </a>
                 <a
-                  href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrlAbs)}&text=${encodeURIComponent(`Check out ${product.name} from ${siteConfig.companyName}`)}`}
+                  href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrlAbs)}&text=${encodeURIComponent(`Check out ${name} from ${siteConfig.companyName}`)}`}
                   target="_blank"
                   rel="noopener"
                   className="share-link"
@@ -169,7 +172,7 @@ export default async function ProductDetailPage({
                   <i className="fab fa-linkedin-in" />
                 </a>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Check out ${product.name} from ${siteConfig.companyName}: ${shareUrlAbs}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`Check out ${name} from ${siteConfig.companyName}: ${shareUrlAbs}`)}`}
                   target="_blank"
                   rel="noopener"
                   className="share-link"
@@ -301,10 +304,12 @@ export default async function ProductDetailPage({
             <p className="section-subtitle">More products from {category.name}</p>
           </div>
           <div className="products-grid products-grid-4">
-            {relatedProducts.map((rp) => (
+            {relatedProducts.map((rp) => {
+              const rpName = displayName(rp, meta);
+              return (
               <div className="product-card product-card-compact" key={rp.id}>
                 <div className="product-image">
-                  <img src={bestProductImage(rp.id, meta)} alt={rp.name} />
+                  <img src={bestProductImage(rp.id, meta)} alt={rpName} />
                   <div className="product-overlay">
                     <Link
                       href={getProductUrl(categorySlug, rp.id)}
@@ -315,11 +320,12 @@ export default async function ProductDetailPage({
                   </div>
                 </div>
                 <div className="product-info">
-                  <h3 className="product-name">{rp.name}</h3>
+                  <h3 className="product-name">{rpName}</h3>
                   <p className="product-desc">{rp.short_desc}</p>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

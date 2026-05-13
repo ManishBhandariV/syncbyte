@@ -69,6 +69,7 @@ export type ProductMeta = {
   brand: string | null;
   display_order: number;
   image_url: string | null;
+  name_override: string | null;
 };
 
 export type GalleryImage = {

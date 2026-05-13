@@ -13,6 +13,7 @@ import {
   sortByMeta,
   getBrandFor,
   bestProductImage,
+  displayName,
 } from "@/lib/data/product-meta";
 
 type SP = { brand?: string };
@@ -158,10 +159,12 @@ export default async function ProductsPage({
                     </div>
                     <p className="category-description">{cat.description}</p>
                     <div className="products-grid products-grid-4">
-                      {products.slice(0, showCount).map((product) => (
+                      {products.slice(0, showCount).map((product) => {
+                        const name = displayName(product, meta);
+                        return (
                         <div className="product-card product-card-compact" key={product.id}>
                           <div className="product-image">
-                            <img src={bestProductImage(product.id, meta)} alt={product.name} />
+                            <img src={bestProductImage(product.id, meta)} alt={name} />
                             <div className="product-overlay">
                               <Link
                                 href={getProductUrl(slug, product.id)}
@@ -172,11 +175,12 @@ export default async function ProductsPage({
                             </div>
                           </div>
                           <div className="product-info">
-                            <h3 className="product-name">{product.name}</h3>
+                            <h3 className="product-name">{name}</h3>
                             <p className="product-desc">{product.short_desc}</p>
                           </div>
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   </div>
                 );

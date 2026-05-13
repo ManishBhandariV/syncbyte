@@ -9,12 +9,21 @@ import { BRANDS } from "@/lib/data/brands";
 
 type Props = {
   productId: string;
+  productName: string;
   brand: string | null;
   displayOrder: number;
   imageUrl: string | null;
+  nameOverride: string | null;
 };
 
-export function MetaPanel({ productId, brand, displayOrder, imageUrl }: Props) {
+export function MetaPanel({
+  productId,
+  productName,
+  brand,
+  displayOrder,
+  imageUrl,
+  nameOverride,
+}: Props) {
   return (
     <div
       style={{
@@ -41,18 +50,30 @@ export function MetaPanel({ productId, brand, displayOrder, imageUrl }: Props) {
         </p>
       </div>
 
-      {/* Brand + order form */}
+      {/* Brand + order + display name form */}
       <form
         action={saveProductMeta}
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr auto",
+          gridTemplateColumns: "2fr 1fr 1fr auto",
           gap: 12,
           alignItems: "end",
           marginBottom: 24,
         }}
       >
         <input type="hidden" name="product_id" value={productId} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+            Display name <span style={{ color: "#94a3b8", fontWeight: 400 }}>(leave blank to use default)</span>
+          </label>
+          <input
+            type="text"
+            name="name_override"
+            defaultValue={nameOverride ?? ""}
+            placeholder={productName}
+            style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.88rem" }}
+          />
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
             Brand

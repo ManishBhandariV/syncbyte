@@ -32,6 +32,7 @@ export default async function AdminPage({
 
   const { product } = await searchParams;
   const selectedId = product ?? allProducts[0]?.id ?? "";
+  const selectedProduct = allProducts.find((p) => p.id === selectedId);
 
   const db = await getDb();
   const specs = selectedId
@@ -87,9 +88,11 @@ export default async function AdminPage({
             <>
               <MetaPanel
                 productId={selectedId}
+                productName={selectedProduct?.name ?? selectedId}
                 brand={meta?.brand ?? null}
                 displayOrder={meta?.display_order ?? 0}
                 imageUrl={meta?.image_url ?? null}
+                nameOverride={meta?.name_override ?? null}
               />
               <SpecsPanel productId={selectedId} specs={specs} />
               <DownloadsPanel productId={selectedId} downloads={downloads} />

@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS product_meta (
   brand TEXT,
   display_order INTEGER DEFAULT 0,
   image_url TEXT,
+  name_override TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -109,6 +110,7 @@ CREATE TABLE IF NOT EXISTS brand_logos (
 // SQLite doesn't support ADD COLUMN IF NOT EXISTS, so we try/catch.
 const MIGRATIONS = [
   "ALTER TABLE product_meta ADD COLUMN image_url TEXT",
+  "ALTER TABLE product_meta ADD COLUMN name_override TEXT",
 ];
 
 export const sqliteDriver: DbDriver = {

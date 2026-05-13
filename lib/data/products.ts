@@ -212,7 +212,7 @@ export const productCategories: ProductCategories = {
   },
   "access-control": {
     name: "Access Control",
-    icon: "fa-shield-check",
+    icon: "fa-user-shield",
     description: "Complete door and entry access control systems",
     products: [
       { id: "c3-100", name: "C3-100", short_desc: "Single door controller" },

@@ -4,12 +4,17 @@ import type { ProductMeta } from "@/lib/db/types";
 
 export type ProductMetaMap = Map<
   string,
-  { brand: string | null; display_order: number; image_url: string | null }
+  {
+    brand: string | null;
+    display_order: number;
+    image_url: string | null;
+    name_override: string | null;
+  }
 >;
 
 /**
  * Fetches the per-product overrides set in the admin panel
- * (brand + display order + uploaded image) and returns them keyed by product_id.
+ * (brand + display order + uploaded image + display name) keyed by product_id.
  *
  * Tolerates DB unavailability — returns an empty map.
  */
@@ -18,19 +23,29 @@ export async function loadProductMeta(): Promise<ProductMetaMap> {
   try {
     const db = await getDb();
     const rows = await db.all<ProductMeta>(
-      "SELECT product_id, brand, display_order, image_url FROM product_meta",
+      "SELECT product_id, brand, display_order, image_url, name_override FROM product_meta",
     );
     for (const r of rows) {
       map.set(r.product_id, {
         brand: r.brand,
         display_order: r.display_order,
         image_url: r.image_url,
+        name_override: r.name_override,
       });
     }
   } catch (e) {
     console.warn("[product-meta] DB read failed", e);
   }
   return map;
+}
+
+/** Display name: admin override if set (and non-empty), else the static name. */
+export function displayName(
+  product: { id: string; name: string },
+  meta: ProductMetaMap,
+): string {
+  const override = meta.get(product.id)?.name_override;
+  return override && override.trim().length > 0 ? override : product.name;
 }
 
 export function getMetaImage(productId: string, meta: ProductMetaMap): string | null {

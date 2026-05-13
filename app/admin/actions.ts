@@ -116,11 +116,12 @@ export async function deleteDownload(formData: FormData): Promise<void> {
   revalidatePath("/products", "layout");
 }
 
-// ── Product meta (brand + display order + image) ──────────────────────────────
+// ── Product meta (brand + display order + image + display name) ──────────────
 export async function saveProductMeta(formData: FormData): Promise<void> {
   const productId = String(formData.get("product_id") ?? "");
   const brand = String(formData.get("brand") ?? "").trim();
   const displayOrder = Number(formData.get("display_order") ?? 0);
+  const nameOverride = String(formData.get("name_override") ?? "").trim();
   if (!productId) return;
 
   const db = await getDb();
@@ -130,13 +131,13 @@ export async function saveProductMeta(formData: FormData): Promise<void> {
   );
   if (existing) {
     await db.run(
-      "UPDATE product_meta SET brand = ?, display_order = ? WHERE product_id = ?",
-      [brand || null, displayOrder, productId],
+      "UPDATE product_meta SET brand = ?, display_order = ?, name_override = ? WHERE product_id = ?",
+      [brand || null, displayOrder, nameOverride || null, productId],
     );
   } else {
     await db.run(
-      "INSERT INTO product_meta (product_id, brand, display_order) VALUES (?, ?, ?)",
-      [productId, brand || null, displayOrder],
+      "INSERT INTO product_meta (product_id, brand, display_order, name_override) VALUES (?, ?, ?, ?)",
+      [productId, brand || null, displayOrder, nameOverride || null],
     );
   }
   revalidatePath("/admin");

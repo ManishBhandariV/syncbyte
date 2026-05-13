@@ -9,7 +9,7 @@ import {
   getProductUrl,
 } from "@/lib/data/products";
 import { getCustomerLogos, placeholderImage } from "@/lib/data/images";
-import { loadProductMeta, sortByMeta, bestProductImage } from "@/lib/data/product-meta";
+import { loadProductMeta, sortByMeta, bestProductImage, displayName } from "@/lib/data/product-meta";
 import { getGoogleReviews } from "@/lib/data/google-reviews";
 
 const FEATURED = [
@@ -56,10 +56,11 @@ export default async function HomePage() {
               const ordered = sortByMeta(category.products, meta);
               const product = ordered[0];
               if (!product) return null;
+              const name = displayName(product, meta);
               return (
                 <div className="product-card" key={catSlug}>
                   <div className="product-image">
-                    <img src={bestProductImage(product.id, meta)} alt={product.name} />
+                    <img src={bestProductImage(product.id, meta)} alt={name} />
                     <div className="product-overlay">
                       <Link
                         href={getProductUrl(catSlug, product.id)}
@@ -71,7 +72,7 @@ export default async function HomePage() {
                   </div>
                   <div className="product-info">
                     <span className="product-category">{category.name}</span>
-                    <h3 className="product-name">{product.name}</h3>
+                    <h3 className="product-name">{name}</h3>
                     <p className="product-desc">{product.short_desc}</p>
                   </div>
                 </div>
@@ -207,7 +208,7 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon"><i className="fas fa-shield-check" /></div>
+              <div className="feature-icon"><i className="fas fa-shield" /></div>
               <h3 className="feature-title">Warranty Assured</h3>
               <p className="feature-desc">
                 All our products come with manufacturer warranty and service guarantee

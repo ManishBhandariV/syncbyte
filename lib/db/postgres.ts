@@ -85,13 +85,15 @@ const SCHEMA_STATEMENTS = [
     brand         TEXT,
     display_order INTEGER DEFAULT 0,
     image_url     TEXT,
+    name_override TEXT,
     created_at    TIMESTAMPTZ DEFAULT NOW(),
     updated_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS idx_product_meta_brand ON product_meta(brand)`,
   `CREATE INDEX IF NOT EXISTS idx_product_meta_order ON product_meta(display_order)`,
-  // Idempotent migration for existing schemas that pre-date image_url.
+  // Idempotent migrations for existing schemas.
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS image_url TEXT`,
+  `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS name_override TEXT`,
 
   `CREATE TABLE IF NOT EXISTS gallery_images (
     id            SERIAL PRIMARY KEY,
