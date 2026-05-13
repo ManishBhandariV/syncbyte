@@ -21,6 +21,7 @@ export const siteConfig = {
   googleMapsEmbed:
     "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.5!2d77.5644271!3d12.9419281!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae156a3bb7a3f1%3A0x45c9878ce517b865!2sSyncbyte%20Innovations%20Private%20Limited!5e0!3m2!1sen!2sin!4v1234567890",
   gtmId: "GTM-TQDPKM76",
+  gaMeasurementId: "G-6GH73R6H5N",
 } as const;
 
 export type SiteConfig = typeof siteConfig;

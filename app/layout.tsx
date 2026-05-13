@@ -52,6 +52,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','${siteConfig.gtmId}');`}
         </Script>
+        {/* Google Analytics 4 (gtag.js) */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${siteConfig.gaMeasurementId}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${siteConfig.gaMeasurementId}');`}
+        </Script>
         <noscript>
           <iframe
             src={`https://www.googletagmanager.com/ns.html?id=${siteConfig.gtmId}`}
