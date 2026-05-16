@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS contact_enquiries (
   email TEXT NOT NULL,
   product TEXT,
   requirement TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  email_sent INTEGER DEFAULT 0,
+  email_error TEXT
 );
 
 CREATE TABLE IF NOT EXISTS product_meta (
@@ -76,6 +78,7 @@ CREATE TABLE IF NOT EXISTS product_meta (
   display_order INTEGER DEFAULT 0,
   image_url TEXT,
   name_override TEXT,
+  is_hidden INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -104,6 +107,26 @@ CREATE TABLE IF NOT EXISTS brand_logos (
   logo_url TEXT NOT NULL,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS product_features (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id TEXT NOT NULL,
+  feature TEXT NOT NULL,
+  display_order INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_product_features_product_id ON product_features(product_id);
+
+CREATE TABLE IF NOT EXISTS custom_products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id TEXT UNIQUE NOT NULL,
+  category_slug TEXT NOT NULL,
+  name TEXT NOT NULL,
+  short_desc TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_custom_products_category ON custom_products(category_slug);
 `;
 
 // Best-effort migrations for already-existing schemas (e.g. local dev DB).
@@ -111,6 +134,9 @@ CREATE TABLE IF NOT EXISTS brand_logos (
 const MIGRATIONS = [
   "ALTER TABLE product_meta ADD COLUMN image_url TEXT",
   "ALTER TABLE product_meta ADD COLUMN name_override TEXT",
+  "ALTER TABLE product_meta ADD COLUMN is_hidden INTEGER DEFAULT 0",
+  "ALTER TABLE contact_enquiries ADD COLUMN email_sent INTEGER DEFAULT 0",
+  "ALTER TABLE contact_enquiries ADD COLUMN email_error TEXT",
 ];
 
 export const sqliteDriver: DbDriver = {

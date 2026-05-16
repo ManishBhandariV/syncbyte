@@ -32,6 +32,13 @@ export type ProductDownload = {
   display_order: number;
 };
 
+export type ProductFeature = {
+  id: number;
+  product_id: string;
+  feature: string;
+  display_order: number;
+};
+
 export type AdminUser = {
   id: number;
   username: string;
@@ -57,6 +64,8 @@ export type ContactEnquiry = {
   product: string | null;
   requirement: string;
   created_at: string;
+  email_sent: number | null;
+  email_error: string | null;
 };
 
 /**
@@ -70,6 +79,16 @@ export type ProductMeta = {
   display_order: number;
   image_url: string | null;
   name_override: string | null;
+  is_hidden: number;
+};
+
+export type CustomProduct = {
+  id: number;
+  product_id: string;
+  category_slug: string;
+  name: string;
+  short_desc: string | null;
+  created_at: string;
 };
 
 export type GalleryImage = {

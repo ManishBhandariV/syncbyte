@@ -4,9 +4,9 @@ import {
   productCategories,
   getCategoryUrl,
   getProductUrl,
-  totalProductCount,
   type Product,
 } from "@/lib/data/products";
+import { loadEffectiveCategories } from "@/lib/data/products-server";
 import { BRANDS, findBrand } from "@/lib/data/brands";
 import {
   loadProductMeta,
@@ -36,13 +36,17 @@ export default async function ProductsPage({
   searchParams: Promise<SP>;
 }) {
   const { brand } = await searchParams;
-  const total = totalProductCount();
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
   const meta = await loadProductMeta();
+  const effective = await loadEffectiveCategories(meta);
   const selectedBrand = brand ? findBrand(brand) : undefined;
+  const total = Object.values(effective).reduce(
+    (s, c) => s + c.products.length,
+    0,
+  );
 
   // For each category, filter+sort the product list once.
-  const categoriesView = Object.entries(productCategories).map(
+  const categoriesView = Object.entries(effective).map(
     ([slug, cat]) => {
       const filtered: Product[] = selectedBrand
         ? cat.products.filter((p) => getBrandFor(p.id, meta) === selectedBrand.name)

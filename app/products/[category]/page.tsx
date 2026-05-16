@@ -5,7 +5,6 @@ import {
   productCategories,
   getCategoryUrl,
   getProductUrl,
-  totalProductCount,
 } from "@/lib/data/products";
 import {
   loadProductMeta,
@@ -13,6 +12,7 @@ import {
   bestProductImage,
   displayName,
 } from "@/lib/data/product-meta";
+import { loadEffectiveCategories } from "@/lib/data/products-server";
 
 type Params = { category: string };
 
@@ -28,12 +28,16 @@ export default async function CategoryPage({
   params: Promise<Params>;
 }) {
   const { category: slug } = await params;
-  const category = productCategories[slug];
+  const meta = await loadProductMeta();
+  const effective = await loadEffectiveCategories(meta);
+  const category = effective[slug];
   if (!category) notFound();
 
-  const total = totalProductCount();
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
-  const meta = await loadProductMeta();
+  const total = Object.values(effective).reduce(
+    (s, c) => s + c.products.length,
+    0,
+  );
   const sortedProducts = sortByMeta(category.products, meta);
 
   return (

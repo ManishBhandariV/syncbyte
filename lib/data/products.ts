@@ -300,13 +300,16 @@ export function getProductUrl(categorySlug: string, productId: string): string {
 }
 
 /**
- * Look up a product by URL slug (slugified id) or, as a fallback, by exact id.
+ * Look up a product by URL slug (slugified id) or, as a fallback, by exact id,
+ * within a given category set. Pass `productCategories` for static-only search,
+ * or a merged set (static + custom) loaded server-side for full lookup.
  */
-export function findProduct(
+export function findProductIn(
+  categories: ProductCategories,
   categorySlug: string,
   productSlugOrId: string,
 ): { category: ProductCategory; product: Product } | null {
-  const category = productCategories[categorySlug];
+  const category = categories[categorySlug];
   if (!category) return null;
   const target = productSlugOrId.toLowerCase();
   const product =
@@ -314,6 +317,14 @@ export function findProduct(
     category.products.find((p) => p.id === productSlugOrId);
   if (!product) return null;
   return { category, product };
+}
+
+/** Convenience wrapper that searches only the static product catalog. */
+export function findProduct(
+  categorySlug: string,
+  productSlugOrId: string,
+): { category: ProductCategory; product: Product } | null {
+  return findProductIn(productCategories, categorySlug, productSlugOrId);
 }
 
 export function totalProductCount(): number {

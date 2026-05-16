@@ -10,6 +10,11 @@ import { toSlug } from "@/lib/data/products";
 import type { AdminUser } from "@/lib/db/types";
 
 export type LoginResult = { ok: boolean; error?: string };
+/** Generic result for admin form submissions — drives the success/error banner. */
+export type ActionResult = { ok: boolean; message: string };
+
+const RESULT_OK = (message: string): ActionResult => ({ ok: true, message });
+const RESULT_ERR = (message: string): ActionResult => ({ ok: false, message });
 
 export async function login(
   _prev: LoginResult | null,
@@ -117,90 +122,132 @@ export async function deleteDownload(formData: FormData): Promise<void> {
 }
 
 // ── Product meta (brand + display order + image + display name) ──────────────
-export async function saveProductMeta(formData: FormData): Promise<void> {
+export async function saveProductMeta(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
   const productId = String(formData.get("product_id") ?? "");
   const brand = String(formData.get("brand") ?? "").trim();
   const displayOrder = Number(formData.get("display_order") ?? 0);
   const nameOverride = String(formData.get("name_override") ?? "").trim();
-  if (!productId) return;
+  if (!productId) return RESULT_ERR("Missing product id.");
 
-  const db = await getDb();
-  const existing = await db.get<{ id: number }>(
-    "SELECT id FROM product_meta WHERE product_id = ?",
-    [productId],
-  );
-  if (existing) {
-    await db.run(
-      "UPDATE product_meta SET brand = ?, display_order = ?, name_override = ? WHERE product_id = ?",
-      [brand || null, displayOrder, nameOverride || null, productId],
+  try {
+    const db = await getDb();
+    const existing = await db.get<{ id: number }>(
+      "SELECT id FROM product_meta WHERE product_id = ?",
+      [productId],
     );
-  } else {
-    await db.run(
-      "INSERT INTO product_meta (product_id, brand, display_order, name_override) VALUES (?, ?, ?, ?)",
-      [productId, brand || null, displayOrder, nameOverride || null],
-    );
+    if (existing) {
+      await db.run(
+        "UPDATE product_meta SET brand = ?, display_order = ?, name_override = ? WHERE product_id = ?",
+        [brand || null, displayOrder, nameOverride || null, productId],
+      );
+    } else {
+      await db.run(
+        "INSERT INTO product_meta (product_id, brand, display_order, name_override) VALUES (?, ?, ?, ?)",
+        [productId, brand || null, displayOrder, nameOverride || null],
+      );
+    }
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    revalidatePath("/");
+    return RESULT_OK(`Saved brand=${brand || "(none)"}, order=${displayOrder}.`);
+  } catch (e) {
+    console.error("[saveProductMeta]", e);
+    return RESULT_ERR(`Save failed: ${(e as Error).message}`);
   }
-  revalidatePath("/admin");
-  revalidatePath("/products", "layout");
-  revalidatePath("/");
+}
+
+/** Guard rails for any file upload. Returns null if the file is usable, else an error message. */
+function validateUploadedFile(file: unknown, label: string): string | null {
+  if (!(file instanceof File)) return `${label}: no file selected.`;
+  if (!file.name || file.name.trim() === "") return `${label}: empty filename.`;
+  if (file.size === 0) return `${label}: file is empty (0 bytes).`;
+  if (file.size > 8 * 1024 * 1024) return `${label}: file too large (max 8 MB).`;
+  if (!file.type.startsWith("image/")) {
+    return `${label}: only image files allowed (got ${file.type || "unknown type"}).`;
+  }
+  return null;
 }
 
 /**
  * Upload an image file to Vercel Blob and store the URL on product_meta.image_url.
  * The product detail page will use this URL as the primary image.
  */
-export async function uploadProductImage(formData: FormData): Promise<void> {
+export async function uploadProductImage(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
   const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) return RESULT_ERR("Unauthorized.");
 
   const productId = String(formData.get("product_id") ?? "");
-  const file = formData.get("image") as File | null;
-  if (!productId || !file || file.size === 0) return;
+  if (!productId) return RESULT_ERR("Missing product id.");
+
+  const file = formData.get("image");
+  const fileErr = validateUploadedFile(file, "Image");
+  if (fileErr) return RESULT_ERR(fileErr);
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error(
-      "Vercel Blob isn't configured. Install the Blob integration on Vercel " +
-        "(Dashboard → Storage → Create Database → Blob) — it auto-injects BLOB_READ_WRITE_TOKEN.",
+    return RESULT_ERR(
+      "Vercel Blob isn't configured. Connect a Blob store on Vercel Storage and redeploy.",
     );
   }
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-  const blob = await put(`products/${toSlug(productId)}-${Date.now()}.${ext}`, file, {
-    access: "public",
-    contentType: file.type || undefined,
-  });
+  try {
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "bin";
+    const blob = await put(`products/${toSlug(productId)}-${Date.now()}.${ext}`, f, {
+      access: "public",
+      contentType: f.type || undefined,
+    });
 
-  const db = await getDb();
-  const existing = await db.get<{ id: number }>(
-    "SELECT id FROM product_meta WHERE product_id = ?",
-    [productId],
-  );
-  if (existing) {
-    await db.run(
-      "UPDATE product_meta SET image_url = ? WHERE product_id = ?",
-      [blob.url, productId],
+    const db = await getDb();
+    const existing = await db.get<{ id: number }>(
+      "SELECT id FROM product_meta WHERE product_id = ?",
+      [productId],
     );
-  } else {
-    await db.run(
-      "INSERT INTO product_meta (product_id, image_url) VALUES (?, ?)",
-      [productId, blob.url],
-    );
+    if (existing) {
+      await db.run(
+        "UPDATE product_meta SET image_url = ? WHERE product_id = ?",
+        [blob.url, productId],
+      );
+    } else {
+      await db.run(
+        "INSERT INTO product_meta (product_id, image_url) VALUES (?, ?)",
+        [productId, blob.url],
+      );
+    }
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    revalidatePath("/");
+    return RESULT_OK(`Image uploaded (${Math.round(f.size / 1024)} KB).`);
+  } catch (e) {
+    console.error("[uploadProductImage]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
   }
-  revalidatePath("/admin");
-  revalidatePath("/products", "layout");
-  revalidatePath("/");
 }
 
-export async function clearProductImage(formData: FormData): Promise<void> {
+export async function clearProductImage(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
   const productId = String(formData.get("product_id") ?? "");
-  if (!productId) return;
-  const db = await getDb();
-  await db.run(
-    "UPDATE product_meta SET image_url = NULL WHERE product_id = ?",
-    [productId],
-  );
-  revalidatePath("/admin");
-  revalidatePath("/products", "layout");
+  if (!productId) return RESULT_ERR("Missing product id.");
+  try {
+    const db = await getDb();
+    await db.run(
+      "UPDATE product_meta SET image_url = NULL WHERE product_id = ?",
+      [productId],
+    );
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    return RESULT_OK("Custom image cleared.");
+  } catch (e) {
+    console.error("[clearProductImage]", e);
+    return RESULT_ERR(`Failed: ${(e as Error).message}`);
+  }
 }
 
 // ── Reviews moderation ────────────────────────────────────────────────────────
@@ -350,48 +397,187 @@ export async function deleteGalleryVideo(formData: FormData): Promise<void> {
 }
 
 // ── Brand logos ───────────────────────────────────────────────────────────────
-export async function uploadBrandLogo(formData: FormData): Promise<void> {
+export async function uploadBrandLogo(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
   const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) return RESULT_ERR("Unauthorized.");
 
   const brandSlug = String(formData.get("brand_slug") ?? "").trim();
-  const file = formData.get("logo") as File | null;
-  if (!brandSlug || !file || file.size === 0) return;
+  if (!brandSlug) return RESULT_ERR("Missing brand slug.");
 
-  requireBlob();
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "png";
-  const blob = await put(
-    `brands/${brandSlug}-${Date.now()}.${ext}`,
-    file,
-    { access: "public", contentType: file.type || undefined },
-  );
+  const file = formData.get("logo");
+  const fileErr = validateUploadedFile(file, "Logo");
+  if (fileErr) return RESULT_ERR(fileErr);
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return RESULT_ERR("Vercel Blob isn't configured. Connect a Blob store and redeploy.");
+  }
+
+  try {
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "png";
+    const blob = await put(
+      `brands/${brandSlug}-${Date.now()}.${ext}`,
+      f,
+      { access: "public", contentType: f.type || undefined },
+    );
+
+    const db = await getDb();
+    const existing = await db.get<{ brand_slug: string }>(
+      "SELECT brand_slug FROM brand_logos WHERE brand_slug = ?",
+      [brandSlug],
+    );
+    if (existing) {
+      await db.run(
+        "UPDATE brand_logos SET logo_url = ? WHERE brand_slug = ?",
+        [blob.url, brandSlug],
+      );
+    } else {
+      await db.run(
+        "INSERT INTO brand_logos (brand_slug, logo_url) VALUES (?, ?)",
+        [brandSlug, blob.url],
+      );
+    }
+    revalidatePath("/admin/brands");
+    revalidatePath("/");
+    revalidatePath("/products", "layout");
+    return RESULT_OK(`Logo uploaded for ${brandSlug} (${Math.round(f.size / 1024)} KB).`);
+  } catch (e) {
+    console.error("[uploadBrandLogo]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
+}
+
+export async function clearBrandLogo(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const brandSlug = String(formData.get("brand_slug") ?? "").trim();
+  if (!brandSlug) return RESULT_ERR("Missing brand slug.");
+  try {
+    const db = await getDb();
+    await db.run("DELETE FROM brand_logos WHERE brand_slug = ?", [brandSlug]);
+    revalidatePath("/admin/brands");
+    revalidatePath("/");
+    return RESULT_OK(`Logo cleared for ${brandSlug}.`);
+  } catch (e) {
+    console.error("[clearBrandLogo]", e);
+    return RESULT_ERR(`Failed: ${(e as Error).message}`);
+  }
+}
+
+// ── Product features (admin-editable) ─────────────────────────────────────────
+export async function saveFeature(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  const productId = String(formData.get("product_id") ?? "");
+  const feature = String(formData.get("feature") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (!productId || !feature) return;
 
   const db = await getDb();
-  const existing = await db.get<{ brand_slug: string }>(
-    "SELECT brand_slug FROM brand_logos WHERE brand_slug = ?",
-    [brandSlug],
-  );
-  if (existing) {
+  if (id > 0) {
     await db.run(
-      "UPDATE brand_logos SET logo_url = ? WHERE brand_slug = ?",
-      [blob.url, brandSlug],
+      "UPDATE product_features SET feature = ?, display_order = ? WHERE id = ?",
+      [feature, displayOrder, id],
     );
   } else {
     await db.run(
-      "INSERT INTO brand_logos (brand_slug, logo_url) VALUES (?, ?)",
-      [brandSlug, blob.url],
+      "INSERT INTO product_features (product_id, feature, display_order) VALUES (?, ?, ?)",
+      [productId, feature, displayOrder],
     );
   }
-  revalidatePath("/admin/brands");
-  revalidatePath("/");
+  revalidatePath("/admin");
   revalidatePath("/products", "layout");
 }
 
-export async function clearBrandLogo(formData: FormData): Promise<void> {
-  const brandSlug = String(formData.get("brand_slug") ?? "").trim();
-  if (!brandSlug) return;
+export async function deleteFeature(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
   const db = await getDb();
-  await db.run("DELETE FROM brand_logos WHERE brand_slug = ?", [brandSlug]);
-  revalidatePath("/admin/brands");
+  await db.run("DELETE FROM product_features WHERE id = ?", [id]);
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
+}
+
+// ── Custom products (admin-added) + hide/unhide static ones ───────────────────
+export async function addCustomProduct(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const categorySlug = String(formData.get("category_slug") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const shortDesc = String(formData.get("short_desc") ?? "").trim();
+  if (!productId || !categorySlug || !name) {
+    return RESULT_ERR("Product ID, category, and name are required.");
+  }
+  if (!/^[A-Za-z0-9_+\-.&]+$/.test(productId)) {
+    return RESULT_ERR(
+      "Product ID can only contain letters, digits, and these chars: _ + - . &",
+    );
+  }
+  try {
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO custom_products (product_id, category_slug, name, short_desc) VALUES (?, ?, ?, ?)",
+      [productId, categorySlug, name, shortDesc || null],
+    );
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    revalidatePath("/");
+    return RESULT_OK(`Product "${name}" added to ${categorySlug}.`);
+  } catch (e) {
+    const msg = (e as Error).message;
+    console.error("[addCustomProduct]", e);
+    if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
+      return RESULT_ERR(`A product with ID "${productId}" already exists.`);
+    }
+    return RESULT_ERR(`Add failed: ${msg}`);
+  }
+}
+
+export async function deleteCustomProduct(formData: FormData): Promise<void> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  if (!productId) return;
+  const db = await getDb();
+  // Cascade: remove the product + all its meta/specs/downloads/features.
+  await db.run("DELETE FROM custom_products WHERE product_id = ?", [productId]);
+  await db.run("DELETE FROM product_meta WHERE product_id = ?", [productId]);
+  await db.run("DELETE FROM product_specs WHERE product_id = ?", [productId]);
+  await db.run("DELETE FROM product_downloads WHERE product_id = ?", [productId]);
+  await db.run("DELETE FROM product_features WHERE product_id = ?", [productId]);
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
+  revalidatePath("/");
+}
+
+/**
+ * Hide / unhide a *static* product. Custom products should be deleted instead.
+ * Hidden products are filtered out of all public listings.
+ */
+export async function setProductHidden(formData: FormData): Promise<void> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const hidden = String(formData.get("hidden") ?? "0") === "1";
+  if (!productId) return;
+  const db = await getDb();
+  const existing = await db.get<{ id: number }>(
+    "SELECT id FROM product_meta WHERE product_id = ?",
+    [productId],
+  );
+  if (existing) {
+    await db.run(
+      "UPDATE product_meta SET is_hidden = ? WHERE product_id = ?",
+      [hidden ? 1 : 0, productId],
+    );
+  } else {
+    await db.run(
+      "INSERT INTO product_meta (product_id, is_hidden) VALUES (?, ?)",
+      [productId, hidden ? 1 : 0],
+    );
+  }
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
   revalidatePath("/");
 }

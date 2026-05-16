@@ -1,10 +1,17 @@
 import { Resend } from "resend";
 import { siteConfig } from "@/lib/config";
 
+export type EmailResult = {
+  ok: boolean;
+  /** Resend message id if sent, else null. */
+  id: string | null;
+  /** Human-readable error if not sent. */
+  error: string | null;
+};
+
 /**
  * Send a contact enquiry email to the company inbox.
- * No-op (returns false) if RESEND_API_KEY isn't configured —
- * the DB save still succeeds so submissions aren't lost.
+ * Returns a structured result so the caller can log success/failure to DB.
  */
 export async function sendContactEnquiry(payload: {
   name: string;
@@ -12,15 +19,16 @@ export async function sendContactEnquiry(payload: {
   email: string;
   product?: string;
   requirement: string;
-}): Promise<boolean> {
+}): Promise<EmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("[email] RESEND_API_KEY not set — skipping email send.");
-    return false;
+    return {
+      ok: false,
+      id: null,
+      error: "RESEND_API_KEY env var is not set on this deployment.",
+    };
   }
 
-  // Verified sender on Resend. Defaults to Resend's onboarding sender,
-  // which works without verifying a custom domain.
   const from =
     process.env.MAIL_FROM ?? "Syncbyte Website <onboarding@resend.dev>";
   const to = process.env.MAIL_TO ?? siteConfig.companyEmail;
@@ -60,13 +68,15 @@ export async function sendContactEnquiry(payload: {
       html,
     });
     if (result.error) {
+      const msg = `${result.error.name ?? "Error"}: ${result.error.message ?? "unknown"}`;
       console.error("[email] Resend error", result.error);
-      return false;
+      return { ok: false, id: null, error: msg };
     }
-    return true;
+    return { ok: true, id: result.data?.id ?? null, error: null };
   } catch (e) {
-    console.error("[email] send failed", e);
-    return false;
+    const msg = (e as Error).message ?? String(e);
+    console.error("[email] send threw", e);
+    return { ok: false, id: null, error: msg };
   }
 }
 

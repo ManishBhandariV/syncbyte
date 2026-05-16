@@ -77,8 +77,12 @@ const SCHEMA_STATEMENTS = [
     email       TEXT NOT NULL,
     product     TEXT,
     requirement TEXT NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    email_sent  INTEGER DEFAULT 0,
+    email_error TEXT
   )`,
+  `ALTER TABLE contact_enquiries ADD COLUMN IF NOT EXISTS email_sent INTEGER DEFAULT 0`,
+  `ALTER TABLE contact_enquiries ADD COLUMN IF NOT EXISTS email_error TEXT`,
   `CREATE TABLE IF NOT EXISTS product_meta (
     id            SERIAL PRIMARY KEY,
     product_id    TEXT UNIQUE NOT NULL,
@@ -86,6 +90,7 @@ const SCHEMA_STATEMENTS = [
     display_order INTEGER DEFAULT 0,
     image_url     TEXT,
     name_override TEXT,
+    is_hidden     INTEGER DEFAULT 0,
     created_at    TIMESTAMPTZ DEFAULT NOW(),
     updated_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
@@ -94,6 +99,7 @@ const SCHEMA_STATEMENTS = [
   // Idempotent migrations for existing schemas.
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS image_url TEXT`,
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS name_override TEXT`,
+  `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS is_hidden INTEGER DEFAULT 0`,
 
   `CREATE TABLE IF NOT EXISTS gallery_images (
     id            SERIAL PRIMARY KEY,
@@ -115,6 +121,24 @@ const SCHEMA_STATEMENTS = [
     logo_url   TEXT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS product_features (
+    id            SERIAL PRIMARY KEY,
+    product_id    TEXT NOT NULL,
+    feature       TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_product_features_product_id ON product_features(product_id)`,
+  `CREATE TABLE IF NOT EXISTS custom_products (
+    id            SERIAL PRIMARY KEY,
+    product_id    TEXT UNIQUE NOT NULL,
+    category_slug TEXT NOT NULL,
+    name          TEXT NOT NULL,
+    short_desc    TEXT,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_custom_products_category ON custom_products(category_slug)`,
 ];
 
 // A statement that returns its inserted row. We rewrite trailing INSERTs to add RETURNING id.

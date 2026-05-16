@@ -96,9 +96,11 @@ export default async function AdminEnquiriesPage() {
                     style={{
                       display: "flex",
                       gap: 16,
+                      alignItems: "center",
                       fontSize: "0.85rem",
                       color: "#374151",
                       marginBottom: 8,
+                      flexWrap: "wrap",
                     }}
                   >
                     <a href={`mailto:${e.email}`}>
@@ -107,6 +109,19 @@ export default async function AdminEnquiriesPage() {
                     <a href={`tel:${e.phone}`}>
                       <i className="fas fa-phone" /> {e.phone}
                     </a>
+                    {e.email_sent === 1 ? (
+                      <span style={{ fontSize: "0.7rem", background: "#d1fae5", color: "#065f46", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
+                        <i className="fas fa-check-circle" /> Email forwarded
+                      </span>
+                    ) : (
+                      <span
+                        title={e.email_error ?? "Resend was not configured or send failed."}
+                        style={{ fontSize: "0.7rem", background: "#fee2e2", color: "#991b1b", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}
+                      >
+                        <i className="fas fa-exclamation-triangle" /> Email not sent
+                        {e.email_error ? ` · ${e.email_error.slice(0, 80)}` : ""}
+                      </span>
+                    )}
                   </div>
                   <p
                     style={{

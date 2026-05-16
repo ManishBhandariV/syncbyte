@@ -1,13 +1,22 @@
+import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { productCategories } from "@/lib/data/products";
-import type { ProductSpec, ProductDownload, ProductMeta } from "@/lib/db/types";
+import type {
+  ProductSpec,
+  ProductDownload,
+  ProductMeta,
+  ProductFeature,
+  CustomProduct,
+} from "@/lib/db/types";
 import { AdminLogin } from "@/components/AdminLogin";
 import { AdminProductSearch } from "@/components/AdminProductSearch";
 import { SpecsPanel } from "@/components/SpecsPanel";
 import { DownloadsPanel } from "@/components/DownloadsPanel";
+import { FeaturesPanel } from "@/components/FeaturesPanel";
 import { MetaPanel } from "@/components/MetaPanel";
 import { AdminTopBar } from "@/components/AdminTopBar";
+import { ProductDangerPanel } from "@/components/ProductDangerPanel";
 
 export const metadata = { title: "Admin Panel" };
 // Admin must always be dynamic (session cookie).
@@ -23,18 +32,41 @@ export default async function AdminPage({
   const session = await getSession();
   if (!session) return <AdminLogin />;
 
-  const allProducts: Array<{ id: string; name: string; category: string }> = [];
+  const db = await getDb();
+
+  // Static products
+  const allProducts: Array<{
+    id: string;
+    name: string;
+    category: string;
+    isCustom: boolean;
+  }> = [];
   for (const cat of Object.values(productCategories)) {
     for (const p of cat.products) {
-      allProducts.push({ id: p.id, name: p.name, category: cat.name });
+      allProducts.push({ id: p.id, name: p.name, category: cat.name, isCustom: false });
     }
+  }
+  // Admin-added custom products (appended)
+  try {
+    const customs = await db.all<CustomProduct>(
+      "SELECT product_id, category_slug, name FROM custom_products ORDER BY created_at",
+    );
+    for (const c of customs) {
+      const cat = productCategories[c.category_slug];
+      allProducts.push({
+        id: c.product_id,
+        name: c.name,
+        category: cat ? `${cat.name} (custom)` : `${c.category_slug} (custom)`,
+        isCustom: true,
+      });
+    }
+  } catch (e) {
+    console.warn("[admin] could not load custom products", e);
   }
 
   const { product } = await searchParams;
   const selectedId = product ?? allProducts[0]?.id ?? "";
   const selectedProduct = allProducts.find((p) => p.id === selectedId);
-
-  const db = await getDb();
   const specs = selectedId
     ? await db.all<ProductSpec>(
         "SELECT * FROM product_specs WHERE product_id = ? ORDER BY display_order",
@@ -53,6 +85,12 @@ export default async function AdminPage({
         [selectedId],
       )
     : undefined;
+  const features = selectedId
+    ? await db.all<ProductFeature>(
+        "SELECT * FROM product_features WHERE product_id = ? ORDER BY display_order",
+        [selectedId],
+      )
+    : [];
   const pendingReviewCount = (
     await db.get<{ c: number }>(
       "SELECT COUNT(*) AS c FROM reviews WHERE status = 'pending'",
@@ -70,6 +108,24 @@ export default async function AdminPage({
           <p style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
             Product Specs &amp; Downloads
           </p>
+        </div>
+        <div style={{ padding: "0 12px 12px" }}>
+          <Link
+            href="/admin/products/new"
+            style={{
+              display: "block",
+              textAlign: "center",
+              background: "#10b981",
+              color: "#fff",
+              padding: "8px 12px",
+              borderRadius: 8,
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            <i className="fas fa-plus" /> Add Product
+          </Link>
         </div>
         <AdminProductSearch products={allProducts} selectedId={selectedId} />
       </aside>
@@ -95,7 +151,14 @@ export default async function AdminPage({
                 nameOverride={meta?.name_override ?? null}
               />
               <SpecsPanel productId={selectedId} specs={specs} />
+              <FeaturesPanel productId={selectedId} features={features} />
               <DownloadsPanel productId={selectedId} downloads={downloads} />
+              <ProductDangerPanel
+                productId={selectedId}
+                productName={selectedProduct?.name ?? selectedId}
+                isCustom={selectedProduct?.isCustom ?? false}
+                isHidden={(meta?.is_hidden ?? 0) === 1}
+              />
             </>
           ) : (
             <div style={{ textAlign: "center", padding: 48, color: "#94a3b8" }}>

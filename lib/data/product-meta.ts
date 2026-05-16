@@ -9,6 +9,7 @@ export type ProductMetaMap = Map<
     display_order: number;
     image_url: string | null;
     name_override: string | null;
+    is_hidden: number;
   }
 >;
 
@@ -23,7 +24,7 @@ export async function loadProductMeta(): Promise<ProductMetaMap> {
   try {
     const db = await getDb();
     const rows = await db.all<ProductMeta>(
-      "SELECT product_id, brand, display_order, image_url, name_override FROM product_meta",
+      "SELECT product_id, brand, display_order, image_url, name_override, is_hidden FROM product_meta",
     );
     for (const r of rows) {
       map.set(r.product_id, {
@@ -31,6 +32,7 @@ export async function loadProductMeta(): Promise<ProductMetaMap> {
         display_order: r.display_order,
         image_url: r.image_url,
         name_override: r.name_override,
+        is_hidden: r.is_hidden ?? 0,
       });
     }
   } catch (e) {

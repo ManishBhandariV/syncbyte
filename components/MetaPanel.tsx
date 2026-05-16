@@ -1,11 +1,14 @@
 "use client";
 
+import { useActionState } from "react";
 import {
   saveProductMeta,
   uploadProductImage,
   clearProductImage,
+  type ActionResult,
 } from "@/app/admin/actions";
 import { BRANDS } from "@/lib/data/brands";
+import { FormBanner } from "@/components/FormBanner";
 
 type Props = {
   productId: string;
@@ -16,6 +19,8 @@ type Props = {
   nameOverride: string | null;
 };
 
+const INITIAL: ActionResult | null = null;
+
 export function MetaPanel({
   productId,
   productName,
@@ -24,6 +29,24 @@ export function MetaPanel({
   imageUrl,
   nameOverride,
 }: Props) {
+  const [saveResult, saveAction, savePending] = useActionState(
+    saveProductMeta,
+    INITIAL,
+  );
+  const [uploadResult, uploadAction, uploadPending] = useActionState(
+    uploadProductImage,
+    INITIAL,
+  );
+  const [clearResult, clearAction, clearPending] = useActionState(
+    clearProductImage,
+    INITIAL,
+  );
+
+  // Re-key the form on the server-side state, so the select / inputs always
+  // reflect the latest brand/order/name even after a save+revalidate.
+  const formKey = `${productId}|${brand ?? ""}|${displayOrder}|${nameOverride ?? ""}`;
+  const imageKey = `${productId}|${imageUrl ?? ""}`;
+
   return (
     <div
       style={{
@@ -50,9 +73,11 @@ export function MetaPanel({
         </p>
       </div>
 
-      {/* Brand + order + display name form */}
+      <FormBanner result={saveResult} />
+
       <form
-        action={saveProductMeta}
+        key={formKey}
+        action={saveAction}
         style={{
           display: "grid",
           gridTemplateColumns: "2fr 1fr 1fr auto",
@@ -105,6 +130,7 @@ export function MetaPanel({
         </div>
         <button
           type="submit"
+          disabled={savePending}
           style={{
             background: "#10b981",
             color: "#fff",
@@ -113,14 +139,16 @@ export function MetaPanel({
             padding: "8px 18px",
             fontSize: "0.85rem",
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: savePending ? "wait" : "pointer",
+            opacity: savePending ? 0.7 : 1,
           }}
         >
-          <i className="fas fa-save" /> Save
+          <i className={`fas ${savePending ? "fa-spinner fa-spin" : "fa-save"}`} />{" "}
+          {savePending ? "Saving…" : "Save"}
         </button>
       </form>
 
-      {/* Image upload form */}
+      {/* Image upload section */}
       <div
         style={{
           paddingTop: 18,
@@ -130,7 +158,12 @@ export function MetaPanel({
         <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
           Product image
         </label>
+
+        <FormBanner result={uploadResult} />
+        <FormBanner result={clearResult} />
+
         <div
+          key={imageKey}
           style={{
             display: "flex",
             gap: 16,
@@ -166,7 +199,7 @@ export function MetaPanel({
           </div>
 
           <form
-            action={uploadProductImage}
+            action={uploadAction}
             encType="multipart/form-data"
             style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}
           >
@@ -180,6 +213,7 @@ export function MetaPanel({
             />
             <button
               type="submit"
+              disabled={uploadPending}
               style={{
                 background: "#1a365d",
                 color: "#fff",
@@ -188,18 +222,21 @@ export function MetaPanel({
                 padding: "8px 14px",
                 fontSize: "0.82rem",
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: uploadPending ? "wait" : "pointer",
+                opacity: uploadPending ? 0.7 : 1,
               }}
             >
-              <i className="fas fa-upload" /> Upload
+              <i className={`fas ${uploadPending ? "fa-spinner fa-spin" : "fa-upload"}`} />{" "}
+              {uploadPending ? "Uploading…" : "Upload"}
             </button>
           </form>
 
           {imageUrl && (
-            <form action={clearProductImage}>
+            <form action={clearAction}>
               <input type="hidden" name="product_id" value={productId} />
               <button
                 type="submit"
+                disabled={clearPending}
                 style={{
                   background: "#ef4444",
                   color: "#fff",
@@ -208,7 +245,8 @@ export function MetaPanel({
                   padding: "8px 14px",
                   fontSize: "0.82rem",
                   fontWeight: 600,
-                  cursor: "pointer",
+                  cursor: clearPending ? "wait" : "pointer",
+                  opacity: clearPending ? 0.7 : 1,
                 }}
               >
                 <i className="fas fa-times" /> Clear
@@ -217,8 +255,7 @@ export function MetaPanel({
           )}
         </div>
         <p style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 8 }}>
-          Requires Vercel Blob to be installed on the project (Dashboard → Storage → Blob).
-          PNG / JPG / WebP / SVG accepted.
+          PNG / JPG / WebP / SVG accepted. Max 8 MB.
         </p>
       </div>
     </div>
