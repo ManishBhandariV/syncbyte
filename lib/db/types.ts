@@ -91,6 +91,13 @@ export type CustomProduct = {
   created_at: string;
 };
 
+export type CustomBrand = {
+  id: number;
+  slug: string;
+  name: string;
+  created_at: string;
+};
+
 export type GalleryImage = {
   id: number;
   image_url: string;

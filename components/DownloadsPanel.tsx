@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { saveDownload, deleteDownload } from "@/app/admin/actions";
+import { useActionState, useState } from "react";
+import {
+  saveDownload,
+  deleteDownload,
+  uploadDownload,
+  type ActionResult,
+} from "@/app/admin/actions";
+import { FormBanner } from "@/components/FormBanner";
 import type { ProductDownload } from "@/lib/db/types";
 
 const BADGE_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -11,6 +17,8 @@ const BADGE_COLORS: Record<string, { bg: string; fg: string }> = {
   other: { bg: "#f3f4f6", fg: "#6b7280" },
 };
 
+const INITIAL_UPLOAD: ActionResult | null = null;
+
 export function DownloadsPanel({
   productId,
   downloads,
@@ -19,6 +27,11 @@ export function DownloadsPanel({
   downloads: ProductDownload[];
 }) {
   const [editing, setEditing] = useState<Partial<ProductDownload> | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadResult, uploadAction, uploadPending] = useActionState(
+    uploadDownload,
+    INITIAL_UPLOAD,
+  );
 
   return (
     <div
@@ -43,23 +56,133 @@ export function DownloadsPanel({
         <h3 style={{ fontSize: "1rem", color: "#1a365d", display: "flex", gap: 8 }}>
           <i className="fas fa-download" /> Downloads &amp; Datasheets
         </h3>
-        <button
-          type="button"
-          onClick={() => setEditing({ file_type: "pdf" })}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => { setShowUpload(true); setEditing(null); }}
+            style={{
+              background: "#10b981",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "5px 12px",
+              fontSize: "0.78rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <i className="fas fa-upload" /> Upload File
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEditing({ file_type: "pdf" }); setShowUpload(false); }}
+            style={{
+              background: "#1a365d",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "5px 12px",
+              fontSize: "0.78rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <i className="fas fa-link" /> Add by URL
+          </button>
+        </div>
+      </div>
+
+      <FormBanner result={uploadResult} />
+
+      {showUpload && (
+        <form
+          action={async (fd: FormData) => {
+            fd.set("product_id", productId);
+            await uploadAction(fd);
+            setShowUpload(false);
+          }}
+          encType="multipart/form-data"
           style={{
-            background: "#1a365d",
-            color: "#fff",
-            border: "none",
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr 1fr auto auto",
+            gap: 10,
+            alignItems: "end",
+            padding: 14,
+            background: "#ecfdf5",
+            border: "1px dashed #10b981",
             borderRadius: 8,
-            padding: "5px 12px",
-            fontSize: "0.78rem",
-            fontWeight: 600,
-            cursor: "pointer",
+            marginBottom: 16,
           }}
         >
-          <i className="fas fa-plus" /> Add Download
-        </button>
-      </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+              Title
+            </label>
+            <input
+              type="text"
+              name="file_title"
+              required
+              placeholder="e.g. Product Datasheet"
+              style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.88rem" }}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+              File
+            </label>
+            <input
+              type="file"
+              name="file"
+              required
+              accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.zip"
+              style={{ fontSize: "0.85rem" }}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>Order</label>
+            <input
+              type="number"
+              name="display_order"
+              defaultValue={0}
+              style={{ width: 80, padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.88rem" }}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={uploadPending}
+            style={{
+              background: "#10b981",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 18px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: uploadPending ? "wait" : "pointer",
+              opacity: uploadPending ? 0.7 : 1,
+            }}
+          >
+            <i className={`fas ${uploadPending ? "fa-spinner fa-spin" : "fa-upload"}`} />{" "}
+            {uploadPending ? "Uploading…" : "Upload"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowUpload(false)}
+            style={{
+              background: "#e2e8f0",
+              color: "#1a365d",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 14px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+        </form>
+      )}
 
       {editing && (
         <form

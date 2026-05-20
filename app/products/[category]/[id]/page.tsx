@@ -62,7 +62,10 @@ export default async function ProductDetailPage({
   const mainImage = bestProductImage(product.id, meta);
   const name = displayName(product, meta);
 
-  const cataloguePath = `/product-catalogues/${product.id}.pdf`;
+  // Default to the bundled catalogue PDF; overridden below if the admin
+  // has uploaded one or more downloads (we'll use whichever they tag as
+  // catalogue, falling back to the first download).
+  let cataloguePath = `/product-catalogues/${product.id}.pdf`;
   const shareUrlAbs = `https://syncbyte.example${getProductUrl(categorySlug, product.id)}`;
 
   const relatedProducts = category.products
@@ -93,6 +96,17 @@ export default async function ProductDetailPage({
 
   const features =
     dbFeatures.length > 0 ? dbFeatures.map((f) => f.feature) : FEATURES;
+
+  // Wire the prominent "Download Catalogue" button to whatever the admin has
+  // uploaded. Prefer a download whose title contains "catalogue" / "catalog"
+  // (or "datasheet" as a sensible fallback), otherwise just take the first.
+  if (dbDownloads.length > 0) {
+    const cat =
+      dbDownloads.find((d) => /catalog|catalogue/i.test(d.file_title)) ??
+      dbDownloads.find((d) => /datasheet/i.test(d.file_title)) ??
+      dbDownloads[0];
+    cataloguePath = cat.file_url;
+  }
 
   // Specifications: admin-managed DB rows take over completely if any exist;
   // otherwise show the canonical default set so the page never looks empty.
@@ -150,7 +164,13 @@ export default async function ProductDetailPage({
               </div>
 
               <div className="product-actions">
-                <a href={cataloguePath} className="btn btn-primary btn-lg" download>
+                <a
+                  href={cataloguePath}
+                  className="btn btn-primary btn-lg"
+                  target="_blank"
+                  rel="noopener"
+                  download
+                >
                   <i className="fas fa-download" /> Download Catalogue
                 </a>
                 <Link

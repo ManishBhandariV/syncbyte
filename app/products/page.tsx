@@ -7,7 +7,7 @@ import {
   type Product,
 } from "@/lib/data/products";
 import { loadEffectiveCategories } from "@/lib/data/products-server";
-import { BRANDS, findBrand } from "@/lib/data/brands";
+import { loadEffectiveBrands } from "@/lib/data/brands-effective";
 import {
   loadProductMeta,
   sortByMeta,
@@ -24,7 +24,9 @@ export async function generateMetadata({
   searchParams: Promise<SP>;
 }) {
   const { brand } = await searchParams;
-  const b = brand ? findBrand(brand) : undefined;
+  if (!brand) return { title: "All Products" };
+  const brands = await loadEffectiveBrands();
+  const b = brands.find((x) => x.slug === brand);
   return {
     title: b ? `${b.name} Products` : "All Products",
   };
@@ -39,7 +41,10 @@ export default async function ProductsPage({
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
   const meta = await loadProductMeta();
   const effective = await loadEffectiveCategories(meta);
-  const selectedBrand = brand ? findBrand(brand) : undefined;
+  const brandList = await loadEffectiveBrands();
+  const selectedBrand = brand
+    ? brandList.find((x) => x.slug === brand)
+    : undefined;
   const total = Object.values(effective).reduce(
     (s, c) => s + c.products.length,
     0,
@@ -119,7 +124,7 @@ export default async function ProductsPage({
                       <i className="fas fa-th" /> All Brands
                     </Link>
                   </li>
-                  {BRANDS.map((b) => (
+                  {brandList.map((b) => (
                     <li
                       key={b.slug}
                       className={selectedBrand?.slug === b.slug ? "active" : ""}

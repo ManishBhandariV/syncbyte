@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { BRANDS } from "@/lib/data/brands";
 import { loadBrandLogos, resolveBrandLogo } from "@/lib/data/brand-logos-server";
+import { loadEffectiveBrands } from "@/lib/data/brands-effective";
 import { AdminTopBar } from "@/components/AdminTopBar";
 import { BrandsAdminClient } from "@/components/BrandsAdminClient";
 
@@ -12,12 +12,16 @@ export default async function AdminBrandsPage() {
   const session = await getSession();
   if (!session) redirect("/admin");
 
-  const logos = await loadBrandLogos();
-  const view = BRANDS.map((b) => ({
+  const [logos, brands] = await Promise.all([
+    loadBrandLogos(),
+    loadEffectiveBrands(),
+  ]);
+  const view = brands.map((b) => ({
     slug: b.slug,
     name: b.name,
     logo_url: resolveBrandLogo(b.slug, logos),
     uploaded: logos.has(b.slug),
+    isCustom: b.isCustom,
   }));
 
   return (

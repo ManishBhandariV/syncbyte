@@ -17,6 +17,7 @@ import { FeaturesPanel } from "@/components/FeaturesPanel";
 import { MetaPanel } from "@/components/MetaPanel";
 import { AdminTopBar } from "@/components/AdminTopBar";
 import { ProductDangerPanel } from "@/components/ProductDangerPanel";
+import { loadEffectiveBrands } from "@/lib/data/brands-effective";
 
 export const metadata = { title: "Admin Panel" };
 // Admin must always be dynamic (session cookie).
@@ -85,6 +86,7 @@ export default async function AdminPage({
         [selectedId],
       )
     : undefined;
+  const brandsList = await loadEffectiveBrands();
   const features = selectedId
     ? await db.all<ProductFeature>(
         "SELECT * FROM product_features WHERE product_id = ? ORDER BY display_order",
@@ -149,6 +151,7 @@ export default async function AdminPage({
                 displayOrder={meta?.display_order ?? 0}
                 imageUrl={meta?.image_url ?? null}
                 nameOverride={meta?.name_override ?? null}
+                brandOptions={brandsList.map((b) => ({ slug: b.slug, name: b.name }))}
               />
               <SpecsPanel productId={selectedId} specs={specs} />
               <FeaturesPanel productId={selectedId} features={features} />

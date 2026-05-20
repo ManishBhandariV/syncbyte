@@ -127,6 +127,13 @@ CREATE TABLE IF NOT EXISTS custom_products (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_custom_products_category ON custom_products(category_slug);
+
+CREATE TABLE IF NOT EXISTS custom_brands (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 // Best-effort migrations for already-existing schemas (e.g. local dev DB).

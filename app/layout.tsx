@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { siteConfig } from "@/lib/config";
@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   },
   description: siteConfig.siteDescription,
   // Favicon is auto-served by app/icon.tsx (Next.js App Router convention).
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

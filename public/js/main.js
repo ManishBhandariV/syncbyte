@@ -302,6 +302,7 @@ let lastScrollTop = 0;
 const header = document.querySelector('.main-header');
 
 window.addEventListener('scroll', function() {
+    if (!header) return;
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
 
     if (scrollTop > 100) {

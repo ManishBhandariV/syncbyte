@@ -7,7 +7,6 @@ import {
   clearProductImage,
   type ActionResult,
 } from "@/app/admin/actions";
-import { BRANDS } from "@/lib/data/brands";
 import { FormBanner } from "@/components/FormBanner";
 
 type Props = {
@@ -17,6 +16,7 @@ type Props = {
   displayOrder: number;
   imageUrl: string | null;
   nameOverride: string | null;
+  brandOptions: Array<{ slug: string; name: string }>;
 };
 
 const INITIAL: ActionResult | null = null;
@@ -28,6 +28,7 @@ export function MetaPanel({
   displayOrder,
   imageUrl,
   nameOverride,
+  brandOptions,
 }: Props) {
   const [saveResult, saveAction, savePending] = useActionState(
     saveProductMeta,
@@ -109,7 +110,7 @@ export function MetaPanel({
             style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.88rem" }}
           >
             <option value="">— No brand —</option>
-            {BRANDS.map((b) => (
+            {brandOptions.map((b) => (
               <option key={b.slug} value={b.name}>
                 {b.name}
               </option>

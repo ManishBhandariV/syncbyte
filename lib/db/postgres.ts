@@ -139,11 +139,26 @@ const SCHEMA_STATEMENTS = [
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS idx_custom_products_category ON custom_products(category_slug)`,
+  `CREATE TABLE IF NOT EXISTS custom_brands (
+    id         SERIAL PRIMARY KEY,
+    slug       TEXT UNIQUE NOT NULL,
+    name       TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
 ];
 
-// A statement that returns its inserted row. We rewrite trailing INSERTs to add RETURNING id.
+// Tables without an `id` column — skip the auto-appended RETURNING id.
+const NO_ID_TABLES = ["brand_logos"];
+
+// A statement that returns its inserted row. We rewrite trailing INSERTs to add RETURNING id,
+// except for tables we know don't have an `id` column.
 function needsReturning(sql: string): boolean {
-  return /^\s*insert\s+/i.test(sql) && !/returning/i.test(sql);
+  if (!/^\s*insert\s+/i.test(sql)) return false;
+  if (/returning/i.test(sql)) return false;
+  for (const t of NO_ID_TABLES) {
+    if (new RegExp(`insert\\s+into\\s+${t}\\b`, "i").test(sql)) return false;
+  }
+  return true;
 }
 
 export const postgresDriver: DbDriver = {

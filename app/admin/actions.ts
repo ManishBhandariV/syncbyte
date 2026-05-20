@@ -121,6 +121,56 @@ export async function deleteDownload(formData: FormData): Promise<void> {
   revalidatePath("/products", "layout");
 }
 
+/**
+ * Upload a downloadable file (PDF, doc, etc.) to Vercel Blob and insert a
+ * product_downloads row pointing at the resulting URL.
+ */
+export async function uploadDownload(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+
+  const productId = String(formData.get("product_id") ?? "");
+  const title = String(formData.get("file_title") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (!productId) return RESULT_ERR("Missing product id.");
+  if (!title) return RESULT_ERR("Title is required.");
+
+  const file = formData.get("file");
+  const fileErr = validateAnyUploadedFile(file, "File");
+  if (fileErr) return RESULT_ERR(fileErr);
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return RESULT_ERR("Vercel Blob isn't configured.");
+  }
+
+  try {
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "bin";
+    const blob = await put(
+      `downloads/${toSlug(productId)}-${toSlug(title)}-${Date.now()}.${ext}`,
+      f,
+      { access: "public", contentType: f.type || undefined },
+    );
+    const fileType = fileTypeFromMime(f.type ?? "");
+    const fileSize = humanFileSize(f.size);
+
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO product_downloads (product_id, file_title, file_url, file_type, file_size, display_order) VALUES (?, ?, ?, ?, ?, ?)",
+      [productId, title, blob.url, fileType, fileSize, displayOrder],
+    );
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    return RESULT_OK(`Uploaded "${title}" (${fileSize}).`);
+  } catch (e) {
+    console.error("[uploadDownload]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
+}
+
 // ── Product meta (brand + display order + image + display name) ──────────────
 export async function saveProductMeta(
   _prev: ActionResult | null,
@@ -159,7 +209,7 @@ export async function saveProductMeta(
   }
 }
 
-/** Guard rails for any file upload. Returns null if the file is usable, else an error message. */
+/** Guard rails for image uploads. Returns null if the file is usable, else an error message. */
 function validateUploadedFile(file: unknown, label: string): string | null {
   if (!(file instanceof File)) return `${label}: no file selected.`;
   if (!file.name || file.name.trim() === "") return `${label}: empty filename.`;
@@ -169,6 +219,28 @@ function validateUploadedFile(file: unknown, label: string): string | null {
     return `${label}: only image files allowed (got ${file.type || "unknown type"}).`;
   }
   return null;
+}
+
+/** Looser validation for documents (PDFs, etc.) — any file type accepted. */
+function validateAnyUploadedFile(file: unknown, label: string): string | null {
+  if (!(file instanceof File)) return `${label}: no file selected.`;
+  if (!file.name || file.name.trim() === "") return `${label}: empty filename.`;
+  if (file.size === 0) return `${label}: file is empty (0 bytes).`;
+  if (file.size > 8 * 1024 * 1024) return `${label}: file too large (max 8 MB).`;
+  return null;
+}
+
+function fileTypeFromMime(mime: string): "pdf" | "doc" | "image" | "other" {
+  if (mime.includes("pdf")) return "pdf";
+  if (mime.includes("word") || mime.includes("msword") || mime.includes("officedocument.wordprocessingml")) return "doc";
+  if (mime.startsWith("image/")) return "image";
+  return "other";
+}
+
+function humanFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
 }
 
 /**
@@ -551,6 +623,48 @@ export async function deleteCustomProduct(formData: FormData): Promise<void> {
   revalidatePath("/admin");
   revalidatePath("/products", "layout");
   revalidatePath("/");
+}
+
+// ── Custom brands (admin-added) ───────────────────────────────────────────────
+export async function addCustomBrand(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return RESULT_ERR("Brand name is required.");
+  const slug = toSlug(name);
+  if (!slug) return RESULT_ERR("Brand name produces an invalid slug.");
+  try {
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO custom_brands (slug, name) VALUES (?, ?)",
+      [slug, name],
+    );
+    revalidatePath("/admin/brands");
+    revalidatePath("/");
+    revalidatePath("/products", "layout");
+    return RESULT_OK(`Brand "${name}" added.`);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
+      return RESULT_ERR(`A brand with that name already exists.`);
+    }
+    console.error("[addCustomBrand]", e);
+    return RESULT_ERR(`Add failed: ${msg}`);
+  }
+}
+
+export async function deleteCustomBrand(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return;
+  const db = await getDb();
+  await db.run("DELETE FROM custom_brands WHERE slug = ?", [slug]);
+  await db.run("DELETE FROM brand_logos WHERE brand_slug = ?", [slug]);
+  // Clear the brand tag from any products tagged with this brand's name.
+  // (Best-effort — products keep no FK to the brand row.)
+  revalidatePath("/admin/brands");
+  revalidatePath("/");
+  revalidatePath("/products", "layout");
 }
 
 /**
