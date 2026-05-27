@@ -9,6 +9,7 @@ import {
 import { getProductImage } from "@/lib/data/images";
 import { loadProductMeta, bestProductImage, displayName } from "@/lib/data/product-meta";
 import { loadEffectiveCategories } from "@/lib/data/products-server";
+import { loadProductImages } from "@/lib/data/product-images-server";
 import { ProductTabs } from "@/components/ProductTabs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { getDb } from "@/lib/db";
@@ -59,7 +60,12 @@ export default async function ProductDetailPage({
   if (!found) notFound();
   const { category, product } = found;
 
-  const mainImage = bestProductImage(product.id, meta);
+  // Up to 3 admin-uploaded images; fall back to the single best image.
+  const productImages = await loadProductImages(product.id);
+  const galleryImages =
+    productImages.length > 0
+      ? productImages.map((i) => i.image_url)
+      : [bestProductImage(product.id, meta)];
   const name = displayName(product, meta);
 
   // Default to the bundled catalogue PDF; overridden below if the admin
@@ -139,11 +145,7 @@ export default async function ProductDetailPage({
       <section className="section product-detail">
         <div className="container">
           <div className="product-detail-grid">
-            <ProductImageGallery
-              mainImage={mainImage}
-              productId={product.id}
-              productName={name}
-            />
+            <ProductImageGallery images={galleryImages} productName={name} />
 
             <div className="product-detail-info">
               <span className="product-category-badge">

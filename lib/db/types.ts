@@ -98,6 +98,38 @@ export type CustomBrand = {
   created_at: string;
 };
 
+export type FeaturedProduct = {
+  id: number;
+  product_id: string;
+  display_order: number;
+};
+
+export type CarouselSlide = {
+  id: number;
+  image_url: string;
+  button_label: string;
+  category_slug: string;
+  display_order: number;
+};
+
+export type SiteDownload = {
+  id: number;
+  title: string;
+  description: string | null;
+  file_url: string;
+  file_type: string;
+  file_size: string;
+  category: string;
+  display_order: number;
+};
+
+export type ProductImage = {
+  id: number;
+  product_id: string;
+  image_url: string;
+  display_order: number;
+};
+
 export type GalleryImage = {
   id: number;
   image_url: string;

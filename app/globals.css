@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* ── Mobile header safety net ──────────────────────────────────────────────
+   Some mobile browsers (notably older iOS Safari) mishandle position:sticky
+   on the header. On small screens we force normal flow + visibility so the
+   top bar and main header can never disappear. */
+@media (max-width: 992px) {
+  .top-bar,
+  .main-header {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  .main-header {
+    position: relative !important;
+    top: auto !important;
+  }
+}
+
 /* ── Fixed services ticker (bottom of every public page) ──────────────────── */
 .services-ticker {
   position: fixed;
@@ -118,11 +135,43 @@ body {
   max-height: 60px;
   max-width: 100%;
   object-fit: contain;
-  filter: grayscale(60%);
-  transition: filter 0.2s;
 }
-.brand-card:hover img {
-  filter: grayscale(0%);
+
+/* ── Customer logos carousel (interactive) ────────────────────────────────── */
+.customers-carousel-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.customers-carousel-wrap .customers-carousel {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.customers-carousel-wrap .customers-carousel::-webkit-scrollbar {
+  display: none;
+}
+.customers-arrow {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #1a365d;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: background 0.15s, color 0.15s;
+  z-index: 2;
+}
+.customers-arrow:hover {
+  background: #1a365d;
+  color: #fff;
 }
 .brand-card-text {
   font-size: 1rem;

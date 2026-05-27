@@ -3,8 +3,31 @@ import path from "node:path";
 import Link from "next/link";
 import { siteConfig } from "@/lib/config";
 import { DownloadsFilter, type DownloadFile } from "@/components/DownloadsFilter";
+import { getDb } from "@/lib/db";
+import type { SiteDownload } from "@/lib/db/types";
 
 export const metadata = { title: "Downloads" };
+export const dynamic = "force-dynamic";
+
+async function loadDbDownloads(): Promise<DownloadFile[]> {
+  try {
+    const db = await getDb();
+    const rows = await db.all<SiteDownload>(
+      "SELECT * FROM site_downloads ORDER BY display_order, id",
+    );
+    return rows.map((r) => ({
+      name: r.title,
+      extension: (r.file_type || "file").toUpperCase(),
+      filename: r.title,
+      size: r.file_size || "",
+      category: r.category || "Other",
+      description: r.description ?? undefined,
+      url: r.file_url,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 const SAMPLE_FILES: DownloadFile[] = [
   { name: "Attendance Software", extension: "ZIP", filename: "attendance-software.zip", size: "45 MB", category: "Software", description: "Time and Attendance Management Software" },
@@ -51,9 +74,11 @@ function scanDownloads(): DownloadFile[] {
   }
 }
 
-export default function DownloadsPage() {
-  const scanned = scanDownloads();
-  const files = scanned.length > 0 ? scanned : SAMPLE_FILES;
+export default async function DownloadsPage() {
+  // Priority: admin-managed DB downloads → bundled /public/downloads scan → sample list.
+  const dbFiles = await loadDbDownloads();
+  const scanned = dbFiles.length > 0 ? [] : scanDownloads();
+  const files = dbFiles.length > 0 ? dbFiles : scanned.length > 0 ? scanned : SAMPLE_FILES;
 
   return (
     <>

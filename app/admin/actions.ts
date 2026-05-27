@@ -667,6 +667,231 @@ export async function deleteCustomBrand(formData: FormData): Promise<void> {
   revalidatePath("/products", "layout");
 }
 
+// ── Featured products (home page) ─────────────────────────────────────────────
+export async function addFeatured(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (!productId) return RESULT_ERR("Pick a product.");
+  try {
+    const db = await getDb();
+    const existing = await db.get<{ id: number }>(
+      "SELECT id FROM featured_products WHERE product_id = ?",
+      [productId],
+    );
+    if (existing) {
+      await db.run(
+        "UPDATE featured_products SET display_order = ? WHERE product_id = ?",
+        [displayOrder, productId],
+      );
+    } else {
+      await db.run(
+        "INSERT INTO featured_products (product_id, display_order) VALUES (?, ?)",
+        [productId, displayOrder],
+      );
+    }
+    revalidatePath("/admin/featured");
+    revalidatePath("/");
+    return RESULT_OK("Featured products updated.");
+  } catch (e) {
+    console.error("[addFeatured]", e);
+    return RESULT_ERR(`Failed: ${(e as Error).message}`);
+  }
+}
+
+export async function removeFeatured(formData: FormData): Promise<void> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  if (!productId) return;
+  const db = await getDb();
+  await db.run("DELETE FROM featured_products WHERE product_id = ?", [productId]);
+  revalidatePath("/admin/featured");
+  revalidatePath("/");
+}
+
+// ── Carousel slides (hero) ────────────────────────────────────────────────────
+export async function uploadCarouselSlide(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+
+  const buttonLabel = String(formData.get("button_label") ?? "").trim() || "Explore";
+  const categorySlug = String(formData.get("category_slug") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  const file = formData.get("image");
+  const fileErr = validateUploadedFile(file, "Slide image");
+  if (fileErr) return RESULT_ERR(fileErr);
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return RESULT_ERR("Vercel Blob isn't configured.");
+  }
+  try {
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "jpg";
+    const blob = await put(`carousel/slide-${Date.now()}.${ext}`, f, {
+      access: "public",
+      contentType: f.type || undefined,
+    });
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO carousel_slides (image_url, button_label, category_slug, display_order) VALUES (?, ?, ?, ?)",
+      [blob.url, buttonLabel, categorySlug, displayOrder],
+    );
+    revalidatePath("/admin/carousel");
+    revalidatePath("/");
+    return RESULT_OK("Carousel slide added.");
+  } catch (e) {
+    console.error("[uploadCarouselSlide]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
+}
+
+export async function updateCarouselSlide(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  const buttonLabel = String(formData.get("button_label") ?? "").trim() || "Explore";
+  const categorySlug = String(formData.get("category_slug") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run(
+    "UPDATE carousel_slides SET button_label = ?, category_slug = ?, display_order = ? WHERE id = ?",
+    [buttonLabel, categorySlug, displayOrder, id],
+  );
+  revalidatePath("/admin/carousel");
+  revalidatePath("/");
+}
+
+export async function deleteCarouselSlide(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM carousel_slides WHERE id = ?", [id]);
+  revalidatePath("/admin/carousel");
+  revalidatePath("/");
+}
+
+// ── Site downloads (public /downloads page) ───────────────────────────────────
+export async function uploadSiteDownload(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim() || "Other";
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (!title) return RESULT_ERR("Title is required.");
+  const file = formData.get("file");
+  const fileErr = validateAnyUploadedFile(file, "File");
+  if (fileErr) return RESULT_ERR(fileErr);
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return RESULT_ERR("Vercel Blob isn't configured.");
+  }
+  try {
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "bin";
+    const blob = await put(`site-downloads/${toSlug(title)}-${Date.now()}.${ext}`, f, {
+      access: "public",
+      contentType: f.type || undefined,
+    });
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO site_downloads (title, description, file_url, file_type, file_size, category, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [title, description || null, blob.url, fileTypeFromMime(f.type ?? ""), humanFileSize(f.size), category, displayOrder],
+    );
+    revalidatePath("/admin/downloads-page");
+    revalidatePath("/downloads");
+    return RESULT_OK(`Uploaded "${title}".`);
+  } catch (e) {
+    console.error("[uploadSiteDownload]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
+}
+
+export async function updateSiteDownload(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim() || "Other";
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (id <= 0 || !title) return;
+  const db = await getDb();
+  await db.run(
+    "UPDATE site_downloads SET title = ?, description = ?, category = ?, display_order = ? WHERE id = ?",
+    [title, description || null, category, displayOrder, id],
+  );
+  revalidatePath("/admin/downloads-page");
+  revalidatePath("/downloads");
+}
+
+export async function deleteSiteDownload(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM site_downloads WHERE id = ?", [id]);
+  revalidatePath("/admin/downloads-page");
+  revalidatePath("/downloads");
+}
+
+// ── Product images (up to 3) ──────────────────────────────────────────────────
+const MAX_PRODUCT_IMAGES = 3;
+
+export async function addProductImage(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+  const productId = String(formData.get("product_id") ?? "");
+  if (!productId) return RESULT_ERR("Missing product id.");
+  const file = formData.get("image");
+  const fileErr = validateUploadedFile(file, "Image");
+  if (fileErr) return RESULT_ERR(fileErr);
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return RESULT_ERR("Vercel Blob isn't configured.");
+  }
+  try {
+    const db = await getDb();
+    const countRow = await db.get<{ c: number }>(
+      "SELECT COUNT(*) AS c FROM product_images WHERE product_id = ?",
+      [productId],
+    );
+    if ((countRow?.c ?? 0) >= MAX_PRODUCT_IMAGES) {
+      return RESULT_ERR(`Maximum ${MAX_PRODUCT_IMAGES} images per product. Delete one first.`);
+    }
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "jpg";
+    const blob = await put(`products/${toSlug(productId)}-${Date.now()}.${ext}`, f, {
+      access: "public",
+      contentType: f.type || undefined,
+    });
+    await db.run(
+      "INSERT INTO product_images (product_id, image_url, display_order) VALUES (?, ?, ?)",
+      [productId, blob.url, (countRow?.c ?? 0)],
+    );
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    revalidatePath("/");
+    return RESULT_OK(`Image added (${Math.round(f.size / 1024)} KB).`);
+  } catch (e) {
+    console.error("[addProductImage]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
+}
+
+export async function deleteProductImage(formData: FormData): Promise<void> {
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM product_images WHERE id = ?", [id]);
+  revalidatePath("/admin");
+  revalidatePath("/products", "layout");
+  revalidatePath("/");
+}
+
 /**
  * Hide / unhide a *static* product. Custom products should be deleted instead.
  * Hidden products are filtered out of all public listings.

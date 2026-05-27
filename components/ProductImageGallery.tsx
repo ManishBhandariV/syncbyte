@@ -3,16 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 type Props = {
-  mainImage: string;
-  productId: string;
+  /** Ordered image URLs (1-3). First is the primary. */
+  images: string[];
   productName: string;
 };
 
-export function ProductImageGallery({ mainImage, productId, productName }: Props) {
-  const thumb2 = `/images/products/${encodeURIComponent(productId)}-2.jpg`;
-  const thumb3 = `/images/products/${encodeURIComponent(productId)}-3.jpg`;
-  const thumbs = [mainImage, thumb2, thumb3];
-
+export function ProductImageGallery({ images, productName }: Props) {
+  const thumbs = images.length > 0 ? images : ["/images/placeholder.png"];
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -41,20 +38,19 @@ export function ProductImageGallery({ mainImage, productId, productName }: Props
           onClick={() => setLightboxOpen(true)}
         />
       </div>
-      <div className="image-thumbnails">
-        {thumbs.map((src, i) => (
-          <img
-            key={i}
-            src={src}
-            alt={`${productName} ${i + 1}`}
-            className={`thumbnail ${i === active ? "active" : ""}`}
-            onClick={() => setActive(i)}
-            onError={(e) => {
-              e.currentTarget.src = `https://via.placeholder.com/100x100/e2e8f0/1a365d?text=${i + 1}`;
-            }}
-          />
-        ))}
-      </div>
+      {thumbs.length > 1 && (
+        <div className="image-thumbnails">
+          {thumbs.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt={`${productName} ${i + 1}`}
+              className={`thumbnail ${i === active ? "active" : ""}`}
+              onClick={() => setActive(i)}
+            />
+          ))}
+        </div>
+      )}
 
       {lightboxOpen && (
         <div

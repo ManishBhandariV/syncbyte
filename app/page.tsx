@@ -1,18 +1,23 @@
 import Link from "next/link";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { BrandsSection } from "@/components/BrandsSection";
+import { CustomersCarousel } from "@/components/CustomersCarousel";
 import { siteConfig } from "@/lib/config";
 import {
   productCategories,
-  sampleReviews,
   getCategoryUrl,
   getProductUrl,
 } from "@/lib/data/products";
-import { getCustomerLogos, placeholderImage } from "@/lib/data/images";
+import { getCustomerLogos } from "@/lib/data/images";
 import { loadProductMeta, sortByMeta, bestProductImage, displayName } from "@/lib/data/product-meta";
+import { loadApprovedReviews } from "@/lib/data/reviews-server";
 import { getGoogleReviews } from "@/lib/data/google-reviews";
+import { loadEffectiveCategories } from "@/lib/data/products-server";
+import { loadProductImagesMap } from "@/lib/data/product-images-server";
+import { loadFeaturedProductIds, loadCarouselSlides } from "@/lib/data/home-server";
 
-const FEATURED = [
+// Default featured set when the admin hasn't chosen any: first product of each.
+const DEFAULT_FEATURED_CATEGORIES = [
   "fingerprint",
   "face",
   "boom-barrier",
@@ -25,18 +30,65 @@ const FEATURED = [
 
 export default async function HomePage() {
   const meta = await loadProductMeta();
+  const imagesMap = await loadProductImagesMap();
+  const effective = await loadEffectiveCategories(meta);
   const customerLogos = getCustomerLogos();
-  const { reviews: googleReviews } = await getGoogleReviews();
-  const logosToShow = customerLogos.length > 0
-    ? customerLogos
-    : Array.from({ length: 10 }, (_, i) => `placeholder_${i + 1}`);
-  const allLogos = [...logosToShow, ...logosToShow];
+  const reviews = await loadApprovedReviews(6);
+  // Only show Google review cards when a real Places API key is configured.
+  const { reviews: googleReviews, isReal: googleIsReal } = await getGoogleReviews();
+  const logosToShow = customerLogos;
+
+  // Featured products: admin-chosen if any, else first product of each default category.
+  const featuredIds = await loadFeaturedProductIds();
+  const featuredItems: Array<{ categorySlug: string; id: string; name: string; categoryName: string; short_desc: string }> = [];
+  if (featuredIds.length > 0) {
+    for (const fid of featuredIds) {
+      for (const [slug, cat] of Object.entries(effective)) {
+        const p = cat.products.find((x) => x.id === fid);
+        if (p) {
+          featuredItems.push({
+            categorySlug: slug,
+            id: p.id,
+            name: displayName(p, meta),
+            categoryName: cat.name,
+            short_desc: p.short_desc,
+          });
+          break;
+        }
+      }
+    }
+  } else {
+    for (const catSlug of DEFAULT_FEATURED_CATEGORIES) {
+      const category = effective[catSlug];
+      if (!category) continue;
+      const ordered = sortByMeta(category.products, meta);
+      const p = ordered[0];
+      if (!p) continue;
+      featuredItems.push({
+        categorySlug: catSlug,
+        id: p.id,
+        name: displayName(p, meta),
+        categoryName: category.name,
+        short_desc: p.short_desc,
+      });
+    }
+  }
+
+  // Carousel slides from admin (fallback to bundled defaults inside the component).
+  const dbSlides = await loadCarouselSlides();
+  const carouselSlides = dbSlides.map((s) => ({
+    src: s.image_url,
+    alt: s.button_label,
+    fallbackText: encodeURIComponent(s.button_label),
+    href: s.category_slug ? getCategoryUrl(s.category_slug) : "/products",
+    ctaLabel: s.button_label,
+  }));
 
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
 
   return (
     <>
-      <HeroCarousel />
+      <HeroCarousel slides={carouselSlides.length > 0 ? carouselSlides : undefined} />
 
       <BrandsSection />
 
@@ -50,34 +102,26 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="products-grid">
-            {FEATURED.map((catSlug) => {
-              const category = productCategories[catSlug];
-              if (!category) return null;
-              const ordered = sortByMeta(category.products, meta);
-              const product = ordered[0];
-              if (!product) return null;
-              const name = displayName(product, meta);
-              return (
-                <div className="product-card" key={catSlug}>
-                  <div className="product-image">
-                    <img src={bestProductImage(product.id, meta)} alt={name} />
-                    <div className="product-overlay">
-                      <Link
-                        href={getProductUrl(catSlug, product.id)}
-                        className="btn btn-secondary"
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="product-info">
-                    <span className="product-category">{category.name}</span>
-                    <h3 className="product-name">{name}</h3>
-                    <p className="product-desc">{product.short_desc}</p>
+            {featuredItems.map((item) => (
+              <div className="product-card" key={item.id}>
+                <div className="product-image">
+                  <img src={bestProductImage(item.id, meta, imagesMap)} alt={item.name} />
+                  <div className="product-overlay">
+                    <Link
+                      href={getProductUrl(item.categorySlug, item.id)}
+                      className="btn btn-secondary"
+                    >
+                      View Details
+                    </Link>
                   </div>
                 </div>
-              );
-            })}
+                <div className="product-info">
+                  <span className="product-category">{item.categoryName}</span>
+                  <h3 className="product-name">{item.name}</h3>
+                  <p className="product-desc">{item.short_desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
           <div className="section-cta">
             <Link href="/products" className="btn btn-primary btn-lg">
@@ -110,44 +154,50 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Sample Reviews */}
-      <section className="section reviews-section">
-        <div className="container">
-          <div className="section-header">
-            <h2 className="section-title">What Our Customers Say</h2>
-            <p className="section-subtitle">Trusted by businesses across India</p>
-          </div>
-          <div className="reviews-grid">
-            {sampleReviews.map((r, i) => (
-              <div className="review-card" key={i}>
-                <div className="review-rating">
-                  {Array.from({ length: 5 }).map((_, n) => (
-                    <i
-                      key={n}
-                      className={`fas fa-star ${n < r.rating ? "filled" : "empty"}`}
-                    />
-                  ))}
-                </div>
-                <p className="review-text">&quot;{r.review}&quot;</p>
-                <div className="review-author">
-                  <div className="author-avatar">
-                    <i className="fas fa-user" />
+      {/* Customer Reviews — only real, admin-approved reviews. Hidden if none yet. */}
+      {reviews.length > 0 && (
+        <section className="section reviews-section">
+          <div className="container">
+            <div className="section-header">
+              <h2 className="section-title">What Our Customers Say</h2>
+              <p className="section-subtitle">Trusted by businesses across India</p>
+            </div>
+            <div className="reviews-grid">
+              {reviews.map((r, i) => (
+                <div className="review-card" key={i}>
+                  <div className="review-rating">
+                    {Array.from({ length: 5 }).map((_, n) => (
+                      <i
+                        key={n}
+                        className={`fas fa-star ${n < r.rating ? "filled" : "empty"}`}
+                      />
+                    ))}
                   </div>
-                  <div className="author-info">
-                    <h4 className="author-name">{r.name}</h4>
-                    <p className="author-title">{r.designation}, {r.company}</p>
+                  <p className="review-text">&quot;{r.review}&quot;</p>
+                  <div className="review-author">
+                    <div className="author-avatar">
+                      <i className="fas fa-user" />
+                    </div>
+                    <div className="author-info">
+                      <h4 className="author-name">{r.name}</h4>
+                      {(r.designation || r.company) && (
+                        <p className="author-title">
+                          {[r.designation, r.company].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="section-cta">
+              <Link href="/reviews" className="btn btn-outline">
+                View All Reviews
+              </Link>
+            </div>
           </div>
-          <div className="section-cta">
-            <Link href="/reviews" className="btn btn-outline">
-              View All Reviews
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Customer Logos */}
       <section className="section customers-section bg-light">
@@ -156,25 +206,7 @@ export default async function HomePage() {
             <h2 className="section-title">Our Trusted Clients</h2>
             <p className="section-subtitle">Proudly serving leading organizations</p>
           </div>
-          <div className="customers-carousel" id="customersCarousel">
-            <div className="customers-track">
-              {allLogos.map((logo, i) => {
-                const isPlaceholder = logo.startsWith("placeholder_");
-                return (
-                  <div className="customer-logo" key={`${logo}-${i}`}>
-                    {isPlaceholder ? (
-                      <img
-                        src={placeholderImage(`Client ${logo.split("_")[1]}`)}
-                        alt="Client"
-                      />
-                    ) : (
-                      <img src={logo} alt="Customer Logo" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <CustomersCarousel logos={logosToShow} />
         </div>
       </section>
 
@@ -280,7 +312,7 @@ export default async function HomePage() {
 
           <div
             style={{
-              display: "grid",
+              display: googleIsReal ? "grid" : "none",
               gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))",
               gap: 20,
               marginBottom: 32,

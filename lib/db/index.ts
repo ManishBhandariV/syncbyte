@@ -35,30 +35,16 @@ async function seedAdmin(driver: DbDriver): Promise<void> {
   if (existing) return;
 
   const hash = await bcrypt.hash(password, 10);
-  await driver.run(
-    "INSERT INTO admin_users (username, password_hash) VALUES (?, ?)",
-    [username, hash],
-  );
-
-  // Seed a few sample specs only if the table is empty (matches PHP db_setup.php behaviour)
-  const anySpec = await driver.get(
-    "SELECT id FROM product_specs LIMIT 1",
-    [],
-  );
-  if (!anySpec) {
-    const samples: Array<[string, string, string, number]> = [
-      ["K21-Pro", "Fingerprint Capacity", "3,000", 0],
-      ["K21-Pro", "Transaction Logs", "1,00,000", 1],
-      ["K21-Pro", "Communication", "TCP/IP, USB", 2],
-      ["K21-Pro", "Power Supply", "12V DC", 3],
-      ["K21-Pro", "Operating Temp", "0°C to 45°C", 4],
-    ];
-    for (const s of samples) {
-      await driver.run(
-        "INSERT INTO product_specs (product_id, spec_key, spec_value, display_order) VALUES (?, ?, ?, ?)",
-        s,
-      );
-    }
+  try {
+    await driver.run(
+      "INSERT INTO admin_users (username, password_hash) VALUES (?, ?)",
+      [username, hash],
+    );
+  } catch (e) {
+    // Concurrent cold-starts (e.g. parallel build workers) can race here.
+    // A UNIQUE violation just means another worker already seeded the admin.
+    const msg = (e as Error).message ?? "";
+    if (!/unique|duplicate/i.test(msg)) throw e;
   }
 }
 

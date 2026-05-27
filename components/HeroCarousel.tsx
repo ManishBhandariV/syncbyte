@@ -11,7 +11,7 @@ type Slide = {
   ctaLabel: string;
 };
 
-const SLIDES: Slide[] = [
+const DEFAULT_SLIDES: Slide[] = [
   { src: "/images/carousel/slide1.jpg", alt: "Fingerprint Devices",  fallbackText: "Fingerprint+Devices",  href: "/products/fingerprint",    ctaLabel: "Explore Fingerprint Devices" },
   { src: "/images/carousel/slide2.jpg", alt: "Face Recognition",     fallbackText: "Face+Recognition",     href: "/products/face",           ctaLabel: "Explore Face Recognition" },
   { src: "/images/carousel/slide3.jpg", alt: "EM Locks",             fallbackText: "EM+Locks",             href: "/products/em-locks",       ctaLabel: "Explore EM Locks" },
@@ -22,7 +22,8 @@ const SLIDES: Slide[] = [
   { src: "/images/carousel/slide8.jpg", alt: "Safe Locks",           fallbackText: "Safe+Locks",           href: "/products/safe-lock",      ctaLabel: "Explore Safe Locks" },
 ];
 
-export function HeroCarousel() {
+export function HeroCarousel({ slides }: { slides?: Slide[] }) {
+  const SLIDES = slides && slides.length > 0 ? slides : DEFAULT_SLIDES;
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
