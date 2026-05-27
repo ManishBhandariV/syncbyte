@@ -145,6 +145,39 @@ const SCHEMA_STATEMENTS = [
     name       TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS featured_products (
+    id            SERIAL PRIMARY KEY,
+    product_id    TEXT UNIQUE NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS carousel_slides (
+    id            SERIAL PRIMARY KEY,
+    image_url     TEXT NOT NULL,
+    button_label  TEXT NOT NULL DEFAULT 'Explore',
+    category_slug TEXT NOT NULL DEFAULT '',
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS site_downloads (
+    id            SERIAL PRIMARY KEY,
+    title         TEXT NOT NULL,
+    description   TEXT,
+    file_url      TEXT NOT NULL,
+    file_type     TEXT DEFAULT 'pdf',
+    file_size     TEXT DEFAULT '',
+    category      TEXT DEFAULT 'Other',
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS product_images (
+    id            SERIAL PRIMARY KEY,
+    product_id    TEXT NOT NULL,
+    image_url     TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_product_images_product_id ON product_images(product_id)`,
 ];
 
 // Tables without an `id` column — skip the auto-appended RETURNING id.

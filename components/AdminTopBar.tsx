@@ -9,15 +9,26 @@ export function AdminTopBar({
 }: {
   title: string;
   username: string;
-  activeTab: "products" | "reviews" | "enquiries" | "gallery" | "brands";
+  activeTab:
+    | "products"
+    | "featured"
+    | "carousel"
+    | "reviews"
+    | "enquiries"
+    | "gallery"
+    | "brands"
+    | "downloads-page";
   pendingReviewCount?: number;
 }) {
   const tabs = [
-    { id: "products",  label: "Products",  href: "/admin" },
-    { id: "reviews",   label: "Reviews",   href: "/admin/reviews" },
-    { id: "enquiries", label: "Enquiries", href: "/admin/enquiries" },
-    { id: "gallery",   label: "Gallery",   href: "/admin/gallery" },
-    { id: "brands",    label: "Brands",    href: "/admin/brands" },
+    { id: "products",       label: "Products",  href: "/admin" },
+    { id: "featured",       label: "Featured",  href: "/admin/featured" },
+    { id: "carousel",       label: "Carousel",  href: "/admin/carousel" },
+    { id: "gallery",        label: "Gallery",   href: "/admin/gallery" },
+    { id: "brands",         label: "Brands",    href: "/admin/brands" },
+    { id: "downloads-page", label: "Downloads", href: "/admin/downloads-page" },
+    { id: "reviews",        label: "Reviews",   href: "/admin/reviews" },
+    { id: "enquiries",      label: "Enquiries", href: "/admin/enquiries" },
   ] as const;
 
   return (

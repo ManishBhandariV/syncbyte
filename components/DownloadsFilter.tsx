@@ -9,6 +9,8 @@ export type DownloadFile = {
   size: string;
   category?: string;
   description?: string;
+  /** Direct URL (Blob). If set, used as the download href instead of /downloads/{filename}. */
+  url?: string;
 };
 
 function fileIcon(ext: string): string {
@@ -88,8 +90,10 @@ export function DownloadsFilter({ files }: { files: DownloadFile[] }) {
                 </div>
               </div>
               <a
-                href={`/downloads/${encodeURIComponent(f.filename)}`}
+                href={f.url ?? `/downloads/${encodeURIComponent(f.filename)}`}
                 className="download-btn"
+                target={f.url ? "_blank" : undefined}
+                rel={f.url ? "noopener" : undefined}
                 download
               >
                 <i className="fas fa-download" />

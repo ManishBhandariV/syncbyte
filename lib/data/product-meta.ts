@@ -55,10 +55,19 @@ export function getMetaImage(productId: string, meta: ProductMetaMap): string | 
 }
 
 /**
- * Returns the best image URL for a product: admin-uploaded blob URL first,
- * then bundled /public/images/products file, then a placeholder.
+ * Returns the best image URL for a product:
+ *   1. first admin-uploaded multi-image (product_images), if a map is provided
+ *   2. legacy single uploaded image (product_meta.image_url)
+ *   3. bundled /public/images/products file
+ *   4. placeholder
  */
-export function bestProductImage(productId: string, meta: ProductMetaMap): string {
+export function bestProductImage(
+  productId: string,
+  meta: ProductMetaMap,
+  imagesMap?: Map<string, string[]>,
+): string {
+  const imgs = imagesMap?.get(productId);
+  if (imgs && imgs.length > 0) return imgs[0];
   return meta.get(productId)?.image_url ?? getProductImage(productId);
 }
 

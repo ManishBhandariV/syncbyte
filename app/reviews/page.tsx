@@ -1,21 +1,15 @@
 import Link from "next/link";
-import { sampleReviews } from "@/lib/data/products";
 import { siteConfig } from "@/lib/config";
 import { ReviewForm } from "@/components/ReviewForm";
-import { getDb } from "@/lib/db";
-import type { Review } from "@/lib/db/types";
+import { loadApprovedReviews } from "@/lib/data/reviews-server";
 
 export const metadata = { title: "Customer Reviews" };
 export const revalidate = 60; // re-fetch approved reviews every minute
 
-const GOOGLE_REVIEWS = [
-  { name: "Vikram Singh", rating: 5, review: "Excellent service and top-quality products. The team at Syncbyte is very professional and helpful.", date: "2 months ago" },
-  { name: "Meera Patel", rating: 5, review: "Installed biometric systems for our entire office. Great work and timely completion.", date: "3 months ago" },
-  { name: "Suresh Reddy", rating: 4, review: "Good products and reasonable pricing. After-sales support is commendable.", date: "4 months ago" },
-];
-
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -23,55 +17,22 @@ function formatDate(iso: string): string {
 }
 
 export default async function ReviewsPage() {
-  // Load admin-approved reviews from DB and prepend them to the seed list.
-  let approvedDb: Array<{
-    name: string;
-    company: string;
-    designation: string;
-    rating: number;
-    review: string;
-    date: string;
-  }> = [];
-  try {
-    const db = await getDb();
-    const rows = await db.all<Review>(
-      "SELECT * FROM reviews WHERE status = 'approved' ORDER BY created_at DESC",
-    );
-    approvedDb = rows.map((r) => ({
-      name: r.name,
-      company: r.company ?? "",
-      designation: r.designation ?? "",
-      rating: r.rating,
-      review: r.review,
-      date: r.created_at,
-    }));
-  } catch (e) {
-    console.warn("[reviews] DB read failed", e);
-  }
-  const customerReviews = [...approvedDb, ...sampleReviews];
+  // Only real, admin-approved reviews — no sample/dummy data.
+  const customerReviews = await loadApprovedReviews();
 
-  const allReviews = [
-    ...customerReviews.map((r) => ({ ...r, source: "customer" as const })),
-    ...GOOGLE_REVIEWS.map((r) => ({
-      ...r,
-      designation: "",
-      company: "",
-      source: "google" as const,
-    })),
-  ];
-  const totalRating = allReviews.reduce((s, r) => s + r.rating, 0);
+  const totalRating = customerReviews.reduce((s, r) => s + r.rating, 0);
   const averageRating =
-    allReviews.length > 0
-      ? Math.round((totalRating / allReviews.length) * 10) / 10
+    customerReviews.length > 0
+      ? Math.round((totalRating / customerReviews.length) * 10) / 10
       : 0;
 
   const ratingCounts: Record<1 | 2 | 3 | 4 | 5, number> = {
     1: 0, 2: 0, 3: 0, 4: 0, 5: 0,
   };
-  for (const r of allReviews) {
+  for (const r of customerReviews) {
     ratingCounts[r.rating as 1 | 2 | 3 | 4 | 5]++;
   }
-  const totalReviews = allReviews.length;
+  const totalReviews = customerReviews.length;
 
   return (
     <>
@@ -156,6 +117,12 @@ export default async function ReviewsPage() {
             <div className="reviews-list">
               <h2 className="section-title">What Our Customers Say</h2>
 
+              {customerReviews.length === 0 && (
+                <p style={{ color: "#64748b", padding: "20px 0" }}>
+                  No reviews yet — be the first to share your experience using the form.
+                </p>
+              )}
+
               {customerReviews.map((r, i) => (
                 <div className="review-card-large" key={`s-${i}`}>
                   <div className="review-header">
@@ -183,39 +150,6 @@ export default async function ReviewsPage() {
                   <div className="review-footer">
                     <span className="review-date">
                       <i className="fas fa-calendar" /> {formatDate(r.date)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              <h3 className="reviews-subtitle">
-                <i className="fab fa-google" /> Reviews from Google
-              </h3>
-              {GOOGLE_REVIEWS.map((r, i) => (
-                <div className="review-card-large google-review" key={`g-${i}`}>
-                  <div className="review-header">
-                    <div className="reviewer-avatar google">
-                      <i className="fas fa-user" />
-                    </div>
-                    <div className="reviewer-info">
-                      <h4 className="reviewer-name">{r.name}</h4>
-                      <span className="review-source">
-                        <i className="fab fa-google" /> Google Review
-                      </span>
-                    </div>
-                    <div className="review-rating">
-                      {Array.from({ length: 5 }).map((_, n) => (
-                        <i
-                          key={n}
-                          className={`fas fa-star ${n < r.rating ? "filled" : "empty"}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="review-content">&quot;{r.review}&quot;</p>
-                  <div className="review-footer">
-                    <span className="review-date">
-                      <i className="fas fa-clock" /> {r.date}
                     </span>
                   </div>
                 </div>
