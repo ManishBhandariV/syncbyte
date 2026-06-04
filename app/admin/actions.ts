@@ -667,6 +667,142 @@ export async function deleteCustomBrand(formData: FormData): Promise<void> {
   revalidatePath("/products", "layout");
 }
 
+// ── Custom categories (admin-added) ───────────────────────────────────────────
+export async function addCustomCategory(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const name = String(formData.get("name") ?? "").trim();
+  const icon = String(formData.get("icon") ?? "").trim() || "fa-folder";
+  const description = String(formData.get("description") ?? "").trim();
+  if (!name) return RESULT_ERR("Category name is required.");
+  const slug = toSlug(name);
+  if (!slug) return RESULT_ERR("Category name produces an invalid slug.");
+
+  // Reject if it collides with an existing static category slug.
+  const { productCategories } = await import("@/lib/data/products");
+  if (productCategories[slug]) {
+    return RESULT_ERR(
+      `A built-in category with slug "${slug}" already exists. Pick a different name.`,
+    );
+  }
+
+  try {
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO custom_categories (slug, name, icon, description) VALUES (?, ?, ?, ?)",
+      [slug, name, icon, description],
+    );
+    revalidatePath("/admin/categories");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    revalidatePath("/products", "layout");
+    return RESULT_OK(`Category "${name}" added.`);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.includes("UNIQUE") || msg.includes("duplicate")) {
+      return RESULT_ERR(`A category with slug "${slug}" already exists.`);
+    }
+    console.error("[addCustomCategory]", e);
+    return RESULT_ERR(`Add failed: ${msg}`);
+  }
+}
+
+export async function deleteCustomCategory(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return;
+  const db = await getDb();
+  // Refuse to delete if it still has custom products attached.
+  const count = (
+    await db.get<{ c: number }>(
+      "SELECT COUNT(*) AS c FROM custom_products WHERE category_slug = ?",
+      [slug],
+    )
+  )?.c ?? 0;
+  if (count > 0) {
+    // We can't return a value from a non-action form, so just bail.
+    // The page will refresh and the user will see the category is still there.
+    console.warn(
+      `[deleteCustomCategory] refused — ${count} custom products still in "${slug}"`,
+    );
+    return;
+  }
+  // Also clear any category_override values that point to this slug.
+  await db.run(
+    "UPDATE product_meta SET category_override = NULL WHERE category_override = ?",
+    [slug],
+  );
+  await db.run("DELETE FROM custom_categories WHERE slug = ?", [slug]);
+  revalidatePath("/admin/categories");
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/products", "layout");
+}
+
+/**
+ * Move a product (static or custom) to a different category.
+ *  - Static products: writes `category_override` on product_meta.
+ *  - Custom products: updates `category_slug` on custom_products directly.
+ */
+export async function changeProductCategory(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const newCategory = String(formData.get("category_slug") ?? "").trim();
+  const isCustom = String(formData.get("is_custom") ?? "") === "1";
+  if (!productId || !newCategory) {
+    return RESULT_ERR("Product and category are required.");
+  }
+
+  // Validate the target category exists (static or custom).
+  const { productCategories } = await import("@/lib/data/products");
+  const db = await getDb();
+  let valid = !!productCategories[newCategory];
+  if (!valid) {
+    const row = await db.get<{ slug: string }>(
+      "SELECT slug FROM custom_categories WHERE slug = ?",
+      [newCategory],
+    );
+    valid = !!row;
+  }
+  if (!valid) return RESULT_ERR(`Unknown category "${newCategory}".`);
+
+  try {
+    if (isCustom) {
+      await db.run(
+        "UPDATE custom_products SET category_slug = ? WHERE product_id = ?",
+        [newCategory, productId],
+      );
+    } else {
+      // Upsert product_meta with category_override.
+      const existing = await db.get<{ id: number }>(
+        "SELECT id FROM product_meta WHERE product_id = ?",
+        [productId],
+      );
+      if (existing) {
+        await db.run(
+          "UPDATE product_meta SET category_override = ? WHERE product_id = ?",
+          [newCategory, productId],
+        );
+      } else {
+        await db.run(
+          "INSERT INTO product_meta (product_id, category_override) VALUES (?, ?)",
+          [productId, newCategory],
+        );
+      }
+    }
+    revalidatePath("/admin");
+    revalidatePath("/admin/categories");
+    revalidatePath("/products", "layout");
+    revalidatePath("/");
+    return RESULT_OK(`Moved "${productId}" to ${newCategory}.`);
+  } catch (e) {
+    console.error("[changeProductCategory]", e);
+    return RESULT_ERR(`Move failed: ${(e as Error).message}`);
+  }
+}
+
 // ── Bulk product import (CSV upload) ─────────────────────────────────────────
 export type ImportSummary = {
   ok: boolean;
@@ -736,6 +872,18 @@ export async function importProductsCsv(
       staticIds.add(p.id);
       staticNames.set(p.id, p.name);
     }
+  }
+  // Include admin-added custom categories so the CSV can reference them by name.
+  try {
+    const dbForCats = await getDb();
+    const customCats = await dbForCats.all<{ slug: string; name: string }>(
+      "SELECT slug, name FROM custom_categories",
+    );
+    for (const c of customCats) {
+      if (!catNameToSlug.has(c.name)) catNameToSlug.set(c.name, c.slug);
+    }
+  } catch (e) {
+    console.warn("[importProductsCsv] custom_categories read failed", e);
   }
 
   const errors: string[] = [];

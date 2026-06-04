@@ -18,8 +18,10 @@ import { MetaPanel } from "@/components/MetaPanel";
 import { ImagesPanel } from "@/components/ImagesPanel";
 import { AdminTopBar } from "@/components/AdminTopBar";
 import { ProductDangerPanel } from "@/components/ProductDangerPanel";
+import { ChangeCategoryPanel } from "@/components/ChangeCategoryPanel";
 import { loadEffectiveBrands } from "@/lib/data/brands-effective";
 import { loadProductImages } from "@/lib/data/product-images-server";
+import { loadAllCategoriesMeta } from "@/lib/data/products-server";
 
 export const metadata = { title: "Admin Panel" };
 // Admin must always be dynamic (session cookie).
@@ -39,6 +41,7 @@ export default async function AdminPage({
 
   // Load custom products grouped by their category slug.
   const customByCat = new Map<string, CustomProduct[]>();
+  const customCategoryMap = new Map<string, string>(); // slug -> product_id (for category lookup)
   try {
     const customs = await db.all<CustomProduct>(
       "SELECT product_id, category_slug, name FROM custom_products ORDER BY created_at",
@@ -47,9 +50,17 @@ export default async function AdminPage({
       const list = customByCat.get(c.category_slug) ?? [];
       list.push(c);
       customByCat.set(c.category_slug, list);
+      customCategoryMap.set(c.product_id, c.category_slug);
     }
   } catch (e) {
     console.warn("[admin] could not load custom products", e);
+  }
+
+  // Map each static product_id -> its home category slug, so we can show the
+  // current category for any product (regardless of any override).
+  const staticHomeCategory = new Map<string, string>();
+  for (const [slug, cat] of Object.entries(productCategories)) {
+    for (const p of cat.products) staticHomeCategory.set(p.id, slug);
   }
 
   // Build the sidebar list: for each category, its static products immediately
@@ -91,7 +102,23 @@ export default async function AdminPage({
       )
     : undefined;
   const brandsList = await loadEffectiveBrands();
+  const allCategories = await loadAllCategoriesMeta();
   const productImages = selectedId ? await loadProductImages(selectedId) : [];
+
+  // Resolve the current category of the selected product:
+  //   1. for custom products: use custom_products.category_slug
+  //   2. for static products: use category_override if set, else static home
+  let currentCategorySlug = "";
+  if (selectedId) {
+    if (customCategoryMap.has(selectedId)) {
+      currentCategorySlug = customCategoryMap.get(selectedId)!;
+    } else {
+      currentCategorySlug =
+        meta?.category_override ??
+        staticHomeCategory.get(selectedId) ??
+        "";
+    }
+  }
   const features = selectedId
     ? await db.all<ProductFeature>(
         "SELECT * FROM product_features WHERE product_id = ? ORDER BY display_order",
@@ -190,6 +217,13 @@ export default async function AdminPage({
                 displayOrder={meta?.display_order ?? 0}
                 nameOverride={meta?.name_override ?? null}
                 brandOptions={brandsList.map((b) => ({ slug: b.slug, name: b.name }))}
+              />
+              <ChangeCategoryPanel
+                productId={selectedId}
+                productName={selectedProduct?.name ?? selectedId}
+                isCustom={selectedProduct?.isCustom ?? false}
+                currentCategorySlug={currentCategorySlug}
+                categories={allCategories}
               />
               <ImagesPanel productId={selectedId} images={productImages} />
               <SpecsPanel productId={selectedId} specs={specs} />

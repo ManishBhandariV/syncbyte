@@ -17,6 +17,7 @@ export function AdminTopBar({
     | "enquiries"
     | "gallery"
     | "brands"
+    | "categories"
     | "downloads-page";
   pendingReviewCount?: number;
 }) {
@@ -26,6 +27,7 @@ export function AdminTopBar({
     { id: "carousel",       label: "Carousel",  href: "/admin/carousel" },
     { id: "gallery",        label: "Gallery",   href: "/admin/gallery" },
     { id: "brands",         label: "Brands",    href: "/admin/brands" },
+    { id: "categories",     label: "Categories", href: "/admin/categories" },
     { id: "downloads-page", label: "Downloads", href: "/admin/downloads-page" },
     { id: "reviews",        label: "Reviews",   href: "/admin/reviews" },
     { id: "enquiries",      label: "Enquiries", href: "/admin/enquiries" },

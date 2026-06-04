@@ -80,6 +80,17 @@ export type ProductMeta = {
   image_url: string | null;
   name_override: string | null;
   is_hidden: number;
+  category_override: string | null;
+};
+
+export type CustomCategory = {
+  id: number;
+  slug: string;
+  name: string;
+  icon: string;
+  description: string;
+  display_order: number;
+  created_at: string;
 };
 
 export type CustomProduct = {

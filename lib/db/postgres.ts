@@ -91,6 +91,7 @@ const SCHEMA_STATEMENTS = [
     image_url     TEXT,
     name_override TEXT,
     is_hidden     INTEGER DEFAULT 0,
+    category_override TEXT,
     created_at    TIMESTAMPTZ DEFAULT NOW(),
     updated_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
@@ -100,6 +101,7 @@ const SCHEMA_STATEMENTS = [
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS image_url TEXT`,
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS name_override TEXT`,
   `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS is_hidden INTEGER DEFAULT 0`,
+  `ALTER TABLE product_meta ADD COLUMN IF NOT EXISTS category_override TEXT`,
 
   `CREATE TABLE IF NOT EXISTS gallery_images (
     id            SERIAL PRIMARY KEY,
@@ -178,6 +180,15 @@ const SCHEMA_STATEMENTS = [
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
   `CREATE INDEX IF NOT EXISTS idx_product_images_product_id ON product_images(product_id)`,
+  `CREATE TABLE IF NOT EXISTS custom_categories (
+    id            SERIAL PRIMARY KEY,
+    slug          TEXT UNIQUE NOT NULL,
+    name          TEXT NOT NULL,
+    icon          TEXT NOT NULL DEFAULT 'fa-folder',
+    description   TEXT NOT NULL DEFAULT '',
+    display_order INTEGER DEFAULT 0,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )`,
 ];
 
 // Tables without an `id` column — skip the auto-appended RETURNING id.

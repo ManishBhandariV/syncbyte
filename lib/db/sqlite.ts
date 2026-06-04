@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS product_meta (
   image_url TEXT,
   name_override TEXT,
   is_hidden INTEGER DEFAULT 0,
+  category_override TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -171,6 +172,16 @@ CREATE TABLE IF NOT EXISTS product_images (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_product_images_product_id ON product_images(product_id);
+
+CREATE TABLE IF NOT EXISTS custom_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  icon TEXT NOT NULL DEFAULT 'fa-folder',
+  description TEXT NOT NULL DEFAULT '',
+  display_order INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 // Best-effort migrations for already-existing schemas (e.g. local dev DB).
@@ -179,6 +190,7 @@ const MIGRATIONS = [
   "ALTER TABLE product_meta ADD COLUMN image_url TEXT",
   "ALTER TABLE product_meta ADD COLUMN name_override TEXT",
   "ALTER TABLE product_meta ADD COLUMN is_hidden INTEGER DEFAULT 0",
+  "ALTER TABLE product_meta ADD COLUMN category_override TEXT",
   "ALTER TABLE contact_enquiries ADD COLUMN email_sent INTEGER DEFAULT 0",
   "ALTER TABLE contact_enquiries ADD COLUMN email_error TEXT",
 ];
