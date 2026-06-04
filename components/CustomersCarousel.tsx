@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 export function CustomersCarousel({ logos }: { logos: string[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
+  const manualPauseUntilRef = useRef(0);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -18,7 +19,9 @@ export function CustomersCarousel({ logos }: { logos: string[] }) {
     const SPEED = 0.9; // px per frame (~54px/s) — noticeably faster than before
 
     const step = () => {
-      if (!pausedRef.current && track) {
+      const now = performance.now();
+      const manuallyPaused = now < manualPauseUntilRef.current;
+      if (!pausedRef.current && !manuallyPaused && track) {
         track.scrollLeft += SPEED;
         // Loop: the list is duplicated, so reset at the halfway point.
         const half = track.scrollWidth / 2;
@@ -35,6 +38,9 @@ export function CustomersCarousel({ logos }: { logos: string[] }) {
   const nudge = (dir: number) => {
     const track = trackRef.current;
     if (!track) return;
+    // Pause the auto-scroll RAF for ~1s so it doesn't immediately cancel the
+    // smooth-scroll the browser is animating.
+    manualPauseUntilRef.current = performance.now() + 1000;
     track.scrollBy({ left: dir * 320, behavior: "smooth" });
   };
 

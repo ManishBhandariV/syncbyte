@@ -21,6 +21,20 @@ export type GoogleReview = {
   profile_photo_url?: string;
 };
 
+/**
+ * URL that opens Google's "Write a review" sheet for the configured business.
+ * Uses GOOGLE_PLACE_ID when available (most reliable), otherwise falls back to
+ * a Google search for the business name — the user can still click "Write a
+ * review" from the knowledge panel.
+ */
+export function getWriteReviewUrl(): string {
+  const placeId = process.env.GOOGLE_PLACE_ID;
+  if (placeId) {
+    return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
+  }
+  return "https://www.google.com/search?q=Syncbyte+Innovations+Private+Limited+Bangalore";
+}
+
 const FALLBACK_REVIEWS: GoogleReview[] = [
   { author_name: "Rajesh Kumar", rating: 5, relative_time_description: "2 weeks ago",  text: "Excellent biometric solutions! Installation was smooth and the support team is very responsive." },
   { author_name: "Priya Sharma", rating: 5, relative_time_description: "1 month ago",  text: "Top quality products and great after-sales service. Highly recommend Syncbyte for access control." },
@@ -35,6 +49,10 @@ export async function getGoogleReviews(): Promise<{
   const placeId = process.env.GOOGLE_PLACE_ID;
 
   if (!apiKey || !placeId) {
+    console.warn(
+      "[google-reviews] env vars missing — falling back to placeholder reviews. " +
+        `apiKey=${apiKey ? "set" : "MISSING"}, placeId=${placeId ? "set" : "MISSING"}`,
+    );
     return { reviews: FALLBACK_REVIEWS, isReal: false };
   }
 
@@ -50,7 +68,10 @@ export async function getGoogleReviews(): Promise<{
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-      console.warn("[google-reviews] API returned", res.status);
+      const body = await res.text().catch(() => "");
+      console.warn(
+        `[google-reviews] API ${res.status} — ${body.slice(0, 300)}`,
+      );
       return { reviews: FALLBACK_REVIEWS, isReal: false };
     }
     const data = (await res.json()) as {

@@ -11,7 +11,7 @@ import {
 import { getCustomerLogos } from "@/lib/data/images";
 import { loadProductMeta, sortByMeta, bestProductImage, displayName } from "@/lib/data/product-meta";
 import { loadApprovedReviews } from "@/lib/data/reviews-server";
-import { getGoogleReviews } from "@/lib/data/google-reviews";
+import { getGoogleReviews, getWriteReviewUrl } from "@/lib/data/google-reviews";
 import { loadEffectiveCategories } from "@/lib/data/products-server";
 import { loadProductImagesMap } from "@/lib/data/product-images-server";
 import { loadFeaturedProductIds, loadCarouselSlides } from "@/lib/data/home-server";
@@ -36,6 +36,7 @@ export default async function HomePage() {
   const reviews = await loadApprovedReviews(6);
   // Only show Google review cards when a real Places API key is configured.
   const { reviews: googleReviews, isReal: googleIsReal } = await getGoogleReviews();
+  const writeReviewUrl = getWriteReviewUrl();
   const logosToShow = customerLogos;
 
   // Featured products: admin-chosen if any, else first product of each default category.
@@ -384,7 +385,7 @@ export default async function HomePage() {
 
           <div style={{ textAlign: "center" }}>
             <a
-              href="https://www.google.com/maps/place/Syncbyte+Innovations+Private+Limited/@12.9419281,77.5644271,18z/data=!4m8!3m7!1s0x3bae156a3bb7a3f1:0x45c9878ce517b865!8m2!3d12.9419281!4d77.5644271!9m1!1b1"
+              href={writeReviewUrl}
               target="_blank"
               rel="noopener"
               style={{
