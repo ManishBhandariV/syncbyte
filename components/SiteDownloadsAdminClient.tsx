@@ -1,16 +1,15 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
+import { upload } from "@vercel/blob/client";
 import {
-  uploadSiteDownload,
+  addSiteDownloadFromUrl,
   updateSiteDownload,
   deleteSiteDownload,
   type ActionResult,
 } from "@/app/admin/actions";
 import { FormBanner } from "@/components/FormBanner";
 import type { SiteDownload } from "@/lib/db/types";
-
-const INITIAL: ActionResult | null = null;
 
 const inputStyle: React.CSSProperties = {
   padding: "8px 12px",
@@ -19,8 +18,69 @@ const inputStyle: React.CSSProperties = {
   fontSize: "0.88rem",
 };
 
+function slugifyForBlob(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "file";
+}
+
 export function SiteDownloadsAdminClient({ downloads }: { downloads: SiteDownload[] }) {
-  const [result, uploadAction, pending] = useActionState(uploadSiteDownload, INITIAL);
+  const [result, setResult] = useState<ActionResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [formKey, setFormKey] = useState(0);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const title = String(fd.get("title") ?? "").trim();
+    const description = String(fd.get("description") ?? "").trim();
+    const category = String(fd.get("category") ?? "").trim() || "Other";
+    const displayOrder = String(fd.get("display_order") ?? "0");
+    const file = fd.get("file");
+    if (!title) {
+      setResult({ ok: false, message: "Title is required." });
+      return;
+    }
+    if (!(file instanceof File) || file.size === 0) {
+      setResult({ ok: false, message: "Pick a file to upload." });
+      return;
+    }
+
+    setBusy(true);
+    setProgress(0);
+    setResult(null);
+    try {
+      const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+      const blob = await upload(
+        `site-downloads/${slugifyForBlob(title)}-${Date.now()}.${ext}`,
+        file,
+        {
+          access: "public",
+          handleUploadUrl: "/api/blob/upload",
+          contentType: file.type || undefined,
+          onUploadProgress: (e) => setProgress(Math.round(e.percentage)),
+        },
+      );
+
+      const meta = new FormData();
+      meta.set("title", title);
+      meta.set("description", description);
+      meta.set("category", category);
+      meta.set("display_order", displayOrder);
+      meta.set("file_url", blob.url);
+      meta.set("size", String(file.size));
+      meta.set("mime", file.type || "");
+      const res = await addSiteDownloadFromUrl(null, meta);
+      setResult(res);
+      if (res.ok) setFormKey((k) => k + 1);
+    } catch (err) {
+      console.error("[SiteDownloadsAdminClient] upload failed", err);
+      setResult({ ok: false, message: `Upload failed: ${(err as Error).message}` });
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  }
 
   return (
     <>
@@ -31,13 +91,14 @@ export function SiteDownloadsAdminClient({ downloads }: { downloads: SiteDownloa
           </h3>
           <p style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: 4 }}>
             These appear on the public <strong>/downloads</strong> page (software, drivers,
-            manuals, catalogues). Upload the file; it's stored on Vercel Blob.
+            manuals, catalogues). Files upload directly to storage — ZIPs up to several
+            hundred MB are fine.
           </p>
         </div>
 
         <FormBanner result={result} />
 
-        <form action={uploadAction} encType="multipart/form-data" style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr 1fr 0.6fr auto", gap: 10, alignItems: "end" }}>
+        <form key={formKey} onSubmit={onSubmit} style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr 1fr 0.6fr auto", gap: 10, alignItems: "end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>Title</label>
             <input name="title" required placeholder="Attendance Software" style={inputStyle} />
@@ -58,8 +119,9 @@ export function SiteDownloadsAdminClient({ downloads }: { downloads: SiteDownloa
             <label style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>Order</label>
             <input type="number" name="display_order" defaultValue={downloads.length} style={inputStyle} />
           </div>
-          <button type="submit" disabled={pending} style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: pending ? "wait" : "pointer", opacity: pending ? 0.7 : 1 }}>
-            <i className={`fas ${pending ? "fa-spinner fa-spin" : "fa-upload"}`} /> {pending ? "Uploading…" : "Add"}
+          <button type="submit" disabled={busy} style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+            <i className={`fas ${busy ? "fa-spinner fa-spin" : "fa-upload"}`} />{" "}
+            {busy ? (progress != null ? `${progress}%` : "Uploading…") : "Add"}
           </button>
         </form>
       </div>

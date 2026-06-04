@@ -1173,6 +1173,49 @@ export async function uploadSiteDownload(
   }
 }
 
+/**
+ * Same as uploadSiteDownload but the file is already in Vercel Blob.
+ * Used for client-side direct uploads to support files >4.5 MB
+ * (the Server Action body-size limit on Vercel).
+ */
+export async function addSiteDownloadFromUrl(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const category = String(formData.get("category") ?? "").trim() || "Other";
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  const fileUrl = String(formData.get("file_url") ?? "").trim();
+  const sizeBytes = Number(formData.get("size") ?? 0);
+  const mime = String(formData.get("mime") ?? "");
+  if (!title) return RESULT_ERR("Title is required.");
+  if (!fileUrl.startsWith("https://")) return RESULT_ERR("Invalid file URL.");
+  try {
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO site_downloads (title, description, file_url, file_type, file_size, category, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        title,
+        description || null,
+        fileUrl,
+        fileTypeFromMime(mime),
+        humanFileSize(sizeBytes),
+        category,
+        displayOrder,
+      ],
+    );
+    revalidatePath("/admin/downloads-page");
+    revalidatePath("/downloads");
+    return RESULT_OK(`Uploaded "${title}".`);
+  } catch (e) {
+    console.error("[addSiteDownloadFromUrl]", e);
+    return RESULT_ERR(`Save failed: ${(e as Error).message}`);
+  }
+}
+
 export async function updateSiteDownload(formData: FormData): Promise<void> {
   const id = Number(formData.get("id") ?? 0);
   const title = String(formData.get("title") ?? "").trim();
@@ -1241,6 +1284,48 @@ export async function addProductImage(
   } catch (e) {
     console.error("[addProductImage]", e);
     return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
+}
+
+/**
+ * Same as addProductImage but the file is already in Vercel Blob — the caller
+ * passes the blob URL + size + content-type. Used by the client-side upload
+ * path so we don't have to push the file bytes through a Server Action.
+ */
+export async function addProductImageFromUrl(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+  const productId = String(formData.get("product_id") ?? "").trim();
+  const imageUrl = String(formData.get("image_url") ?? "").trim();
+  const sizeBytes = Number(formData.get("size") ?? 0);
+  if (!productId) return RESULT_ERR("Missing product id.");
+  if (!imageUrl.startsWith("https://")) return RESULT_ERR("Invalid image URL.");
+  try {
+    const db = await getDb();
+    const countRow = await db.get<{ c: number }>(
+      "SELECT COUNT(*) AS c FROM product_images WHERE product_id = ?",
+      [productId],
+    );
+    if ((countRow?.c ?? 0) >= MAX_PRODUCT_IMAGES) {
+      return RESULT_ERR(
+        `Maximum ${MAX_PRODUCT_IMAGES} images per product. Delete one first.`,
+      );
+    }
+    await db.run(
+      "INSERT INTO product_images (product_id, image_url, display_order) VALUES (?, ?, ?)",
+      [productId, imageUrl, countRow?.c ?? 0],
+    );
+    revalidatePath("/admin");
+    revalidatePath("/products", "layout");
+    revalidatePath("/");
+    const sizeLabel = sizeBytes > 0 ? ` (${Math.round(sizeBytes / 1024)} KB)` : "";
+    return RESULT_OK(`Image added${sizeLabel}.`);
+  } catch (e) {
+    console.error("[addProductImageFromUrl]", e);
+    return RESULT_ERR(`Save failed: ${(e as Error).message}`);
   }
 }
 

@@ -1,12 +1,21 @@
 "use client";
 
-import { useActionState } from "react";
-import { addProductImage, deleteProductImage, type ActionResult } from "@/app/admin/actions";
+import { useState, useTransition } from "react";
+import { upload } from "@vercel/blob/client";
+import {
+  addProductImageFromUrl,
+  deleteProductImage,
+  type ActionResult,
+} from "@/app/admin/actions";
 import { FormBanner } from "@/components/FormBanner";
 import type { ProductImage } from "@/lib/db/types";
 
-const INITIAL: ActionResult | null = null;
 const MAX = 3;
+const MAX_BYTES = 20 * 1024 * 1024; // 20 MB upper bound for product images
+
+function slugifyForBlob(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "img";
+}
 
 export function ImagesPanel({
   productId,
@@ -15,8 +24,53 @@ export function ImagesPanel({
   productId: string;
   images: ProductImage[];
 }) {
-  const [result, action, pending] = useActionState(addProductImage, INITIAL);
+  const [result, setResult] = useState<ActionResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [, startTransition] = useTransition();
+
   const atLimit = images.length >= MAX;
+
+  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setResult({ ok: false, message: `Only image files allowed (got ${file.type || "unknown type"}).` });
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setResult({ ok: false, message: `Image too large (max ${MAX_BYTES / 1024 / 1024} MB).` });
+      return;
+    }
+    setBusy(true);
+    setResult(null);
+    try {
+      const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
+      const blob = await upload(
+        `products/${slugifyForBlob(productId)}-${Date.now()}.${ext}`,
+        file,
+        {
+          access: "public",
+          handleUploadUrl: "/api/blob/upload",
+          contentType: file.type || undefined,
+        },
+      );
+      // Now persist the URL via a tiny Server Action (no file in the body).
+      const fd = new FormData();
+      fd.set("product_id", productId);
+      fd.set("image_url", blob.url);
+      fd.set("size", String(file.size));
+      startTransition(async () => {
+        const res = await addProductImageFromUrl(null, fd);
+        setResult(res);
+        setBusy(false);
+      });
+    } catch (err) {
+      console.error("[ImagesPanel] upload failed", err);
+      setResult({ ok: false, message: `Upload failed: ${(err as Error).message}` });
+      setBusy(false);
+    }
+  }
 
   return (
     <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 24 }}>
@@ -26,7 +80,8 @@ export function ImagesPanel({
         </h3>
         <p style={{ fontSize: "0.78rem", color: "#94a3b8", marginTop: 4 }}>
           Up to {MAX} images. The first is the main image shown in listings; the rest
-          appear as thumbnails on the product page.
+          appear as thumbnails on the product page. Files upload directly to storage —
+          large photos are fine.
         </p>
       </div>
 
@@ -61,13 +116,29 @@ export function ImagesPanel({
           Maximum of {MAX} images reached. Remove one to add another.
         </p>
       ) : (
-        <form action={action} encType="multipart/form-data" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="hidden" name="product_id" value={productId} />
-          <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/svg+xml" required style={{ fontSize: "0.85rem" }} />
-          <button type="submit" disabled={pending} style={{ background: "#1a365d", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: "0.82rem", fontWeight: 600, cursor: pending ? "wait" : "pointer", opacity: pending ? 0.7 : 1 }}>
-            <i className={`fas ${pending ? "fa-spinner fa-spin" : "fa-upload"}`} /> {pending ? "Uploading…" : "Add image"}
-          </button>
-        </form>
+        <label style={{ display: "inline-flex", gap: 8, alignItems: "center", cursor: busy ? "wait" : "pointer" }}>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={onChange}
+            disabled={busy}
+            style={{ fontSize: "0.85rem" }}
+          />
+          <span
+            style={{
+              background: "#1a365d",
+              color: "#fff",
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              opacity: busy ? 0.7 : 1,
+            }}
+          >
+            <i className={`fas ${busy ? "fa-spinner fa-spin" : "fa-upload"}`} />{" "}
+            {busy ? "Uploading…" : "Choose image"}
+          </span>
+        </label>
       )}
     </div>
   );
