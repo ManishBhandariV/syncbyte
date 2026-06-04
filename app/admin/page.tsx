@@ -150,6 +150,23 @@ export default async function AdminPage({
           >
             <i className="fas fa-file-excel" /> Export to Excel
           </a>
+          <Link
+            href="/admin/import"
+            style={{
+              display: "block",
+              textAlign: "center",
+              background: "rgba(255,255,255,0.12)",
+              color: "#fff",
+              padding: "8px 12px",
+              borderRadius: 8,
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              textDecoration: "none",
+              marginTop: 8,
+            }}
+          >
+            <i className="fas fa-file-import" /> Bulk import (CSV)
+          </Link>
         </div>
         <AdminProductSearch products={allProducts} selectedId={selectedId} />
       </aside>

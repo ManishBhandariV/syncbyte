@@ -667,6 +667,220 @@ export async function deleteCustomBrand(formData: FormData): Promise<void> {
   revalidatePath("/products", "layout");
 }
 
+// ── Bulk product import (CSV upload) ─────────────────────────────────────────
+export type ImportSummary = {
+  ok: boolean;
+  message: string;
+  totals?: {
+    rows: number;
+    metaUpserted: number;
+    customsAdded: number;
+    customBrandsAdded: number;
+    errors: string[];
+  };
+};
+
+function parseCsv(text: string): string[][] {
+  const out: string[][] = [];
+  let i = 0, cell = "", row: string[] = [], inQ = false;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i += 2; continue; }
+      if (c === '"') { inQ = false; i++; continue; }
+      cell += c; i++; continue;
+    }
+    if (c === '"') { inQ = true; i++; continue; }
+    if (c === ",") { row.push(cell); cell = ""; i++; continue; }
+    if (c === "\r") { i++; continue; }
+    if (c === "\n") { row.push(cell); out.push(row); row = []; cell = ""; i++; continue; }
+    cell += c; i++;
+  }
+  if (cell.length > 0 || row.length > 0) { row.push(cell); out.push(row); }
+  return out;
+}
+
+const BUNDLED_BRANDS = new Set([
+  "eSSL", "Biomax", "ZKTeco", "Hikvision", "CP Plus",
+  "Ajax Systems", "UNV", "Smart Office Payroll", "Galaxy", "Panasonic",
+]);
+
+export async function importProductsCsv(
+  _prev: ImportSummary | null,
+  formData: FormData,
+): Promise<ImportSummary> {
+  const session = await getSession();
+  if (!session) return { ok: false, message: "Unauthorized." };
+
+  const file = formData.get("csv");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Pick a CSV file first." };
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return { ok: false, message: "CSV too large (max 8 MB)." };
+  }
+
+  const text = (await file.text()).replace(/^﻿/, "");
+  const rows = parseCsv(text).filter((r) => r.length >= 7);
+  if (rows.length < 2) return { ok: false, message: "CSV looks empty." };
+
+  // Lazy import the static catalog so we can decide existing vs. custom.
+  const productsMod = await import("@/lib/data/products");
+  const { productCategories } = productsMod;
+  const catNameToSlug = new Map<string, string>();
+  const staticIds = new Set<string>();
+  const staticNames = new Map<string, string>();
+  for (const [slug, cat] of Object.entries(productCategories)) {
+    catNameToSlug.set(cat.name, slug);
+    for (const p of cat.products) {
+      staticIds.add(p.id);
+      staticNames.set(p.id, p.name);
+    }
+  }
+
+  const errors: string[] = [];
+  const customsToInsert: Array<{ product_id: string; category_slug: string; name: string; short_desc: string }> = [];
+  const metaToWrite: Array<{ product_id: string; brand: string | null; name_override: string | null; is_hidden: number }> = [];
+  const customBrands = new Set<string>();
+
+  // Skip header row.
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const [categoryName, productId, name, displayName, brand, custom, hidden] = r;
+    if (!productId) continue;
+    const isHidden = (hidden || "").trim().toLowerCase() === "yes" ? 1 : 0;
+    const isCustom = (custom || "").trim().toLowerCase() === "yes";
+    const brandClean = (brand || "").trim();
+    if (brandClean && !BUNDLED_BRANDS.has(brandClean)) customBrands.add(brandClean);
+
+    if (staticIds.has(productId)) {
+      const staticName = staticNames.get(productId) ?? "";
+      const want = (displayName || "").trim();
+      const nameOverride = want && want !== staticName ? want : null;
+      metaToWrite.push({
+        product_id: productId,
+        brand: brandClean || null,
+        name_override: nameOverride,
+        is_hidden: isHidden,
+      });
+      continue;
+    }
+    if (!isCustom) {
+      errors.push(`Row ${i + 1}: "${productId}" not in catalog and Custom!=yes — skipped.`);
+      continue;
+    }
+    const catSlug = catNameToSlug.get(categoryName);
+    if (!catSlug) {
+      errors.push(`Row ${i + 1}: unknown category "${categoryName}" for "${productId}".`);
+      continue;
+    }
+    const cleanName = (name || productId).trim();
+    customsToInsert.push({
+      product_id: productId,
+      category_slug: catSlug,
+      name: cleanName,
+      short_desc: (displayName || cleanName).trim(),
+    });
+    metaToWrite.push({
+      product_id: productId,
+      brand: brandClean || null,
+      name_override:
+        (displayName || "").trim() && (displayName || "").trim() !== cleanName
+          ? (displayName || "").trim()
+          : null,
+      is_hidden: isHidden,
+    });
+  }
+
+  const db = await getDb();
+  let customBrandsAdded = 0, customsAdded = 0, metaUpserted = 0;
+
+  for (const brandName of customBrands) {
+    const slug = toSlug(brandName);
+    try {
+      const existing = await db.get<{ slug: string }>(
+        "SELECT slug FROM custom_brands WHERE slug = ?",
+        [slug],
+      );
+      if (!existing) {
+        await db.run(
+          "INSERT INTO custom_brands (slug, name) VALUES (?, ?)",
+          [slug, brandName],
+        );
+        customBrandsAdded++;
+      }
+    } catch (e) {
+      errors.push(`custom_brand ${brandName}: ${(e as Error).message}`);
+    }
+  }
+
+  for (const c of customsToInsert) {
+    try {
+      const existing = await db.get<{ id: number }>(
+        "SELECT id FROM custom_products WHERE product_id = ?",
+        [c.product_id],
+      );
+      if (existing) {
+        await db.run(
+          "UPDATE custom_products SET category_slug = ?, name = ?, short_desc = ? WHERE product_id = ?",
+          [c.category_slug, c.name, c.short_desc, c.product_id],
+        );
+      } else {
+        await db.run(
+          "INSERT INTO custom_products (product_id, category_slug, name, short_desc) VALUES (?, ?, ?, ?)",
+          [c.product_id, c.category_slug, c.name, c.short_desc],
+        );
+      }
+      customsAdded++;
+    } catch (e) {
+      errors.push(`custom_product ${c.product_id}: ${(e as Error).message}`);
+    }
+  }
+
+  for (const m of metaToWrite) {
+    try {
+      const existing = await db.get<{ id: number }>(
+        "SELECT id FROM product_meta WHERE product_id = ?",
+        [m.product_id],
+      );
+      if (existing) {
+        await db.run(
+          "UPDATE product_meta SET brand = ?, name_override = ?, is_hidden = ? WHERE product_id = ?",
+          [m.brand, m.name_override, m.is_hidden, m.product_id],
+        );
+      } else {
+        await db.run(
+          "INSERT INTO product_meta (product_id, brand, name_override, is_hidden) VALUES (?, ?, ?, ?)",
+          [m.product_id, m.brand, m.name_override, m.is_hidden],
+        );
+      }
+      metaUpserted++;
+    } catch (e) {
+      errors.push(`product_meta ${m.product_id}: ${(e as Error).message}`);
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/brands");
+  revalidatePath("/products", "layout");
+  revalidatePath("/");
+
+  return {
+    ok: errors.length === 0,
+    message:
+      errors.length === 0
+        ? `Imported ${rows.length - 1} rows successfully.`
+        : `Imported with ${errors.length} error${errors.length === 1 ? "" : "s"}.`,
+    totals: {
+      rows: rows.length - 1,
+      metaUpserted,
+      customsAdded,
+      customBrandsAdded,
+      errors,
+    },
+  };
+}
+
 // ── Featured products (home page) ─────────────────────────────────────────────
 export async function addFeatured(
   _prev: ActionResult | null,
