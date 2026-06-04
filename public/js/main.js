@@ -28,6 +28,15 @@ function initMobileMenu() {
     const mainNav = document.getElementById('mainNav');
 
     if (mobileMenuToggle && mainNav) {
+        function closeMenu() {
+            mainNav.classList.remove('active');
+            const icon = mobileMenuToggle.querySelector('i');
+            if (icon) {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        }
+
         mobileMenuToggle.addEventListener('click', function() {
             mainNav.classList.toggle('active');
             const icon = this.querySelector('i');
@@ -43,11 +52,19 @@ function initMobileMenu() {
         // Close menu when clicking outside
         document.addEventListener('click', function(e) {
             if (!mobileMenuToggle.contains(e.target) && !mainNav.contains(e.target)) {
-                mainNav.classList.remove('active');
-                const icon = mobileMenuToggle.querySelector('i');
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
+                closeMenu();
             }
+        });
+
+        // Close menu after the user picks a nav link (mobile only — on desktop
+        // the menu isn't an overlay, so closing it has no visible effect).
+        // Event delegation so it survives Next.js client-side re-renders.
+        mainNav.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (!link) return;
+            // Skip the Products parent link only if its mega-dropdown is
+            // currently open via hover; otherwise treat as navigation.
+            closeMenu();
         });
     }
 }
