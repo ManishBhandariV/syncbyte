@@ -239,6 +239,18 @@ export const productCategories: ProductCategories = {
       { id: "hrms", name: "HRMS", short_desc: "HR management software" },
     ],
   },
+  "swing-barriers": {
+    name: "Swing Barriers",
+    icon: "fa-arrows-left-right",
+    description: "Pedestrian swing barriers for premium controlled access",
+    products: [],
+  },
+  "mobile-app-devices": {
+    name: "Mobile App Devices",
+    icon: "fa-mobile-screen",
+    description: "Mobile-app-controlled access and security devices",
+    products: [],
+  },
 };
 
 export type SampleReview = {
