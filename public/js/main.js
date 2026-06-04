@@ -2,13 +2,23 @@
  * Syncbyte Innovations - Main JavaScript
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+function bootstrapSyncbyte() {
     // Initialize all components
     initMobileMenu();
     initBackToTop();
     initSearch();
     initCustomersCarousel();
-});
+}
+
+// In Next.js this script is injected with strategy="afterInteractive", which
+// runs AFTER DOMContentLoaded — so a plain DOMContentLoaded listener would
+// never fire. Check readyState and run immediately if the DOM is already
+// parsed; otherwise fall through to the event for the rare cold-cache case.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapSyncbyte);
+} else {
+    bootstrapSyncbyte();
+}
 
 /**
  * Mobile Menu Toggle
