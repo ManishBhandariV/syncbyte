@@ -56,15 +56,35 @@ function initMobileMenu() {
             }
         });
 
-        // Close menu after the user picks a nav link (mobile only — on desktop
-        // the menu isn't an overlay, so closing it has no visible effect).
-        // Event delegation so it survives Next.js client-side re-renders.
-        mainNav.addEventListener('click', function(e) {
-            const link = e.target.closest('a');
+        // Close menu after the user picks a nav link. We use THREE redundant
+        // hooks because a single delegated bubble handler was found to miss
+        // taps on links inside the .mega-dropdown on mobile:
+        //   1. delegated click on #mainNav  (catches top-level nav items)
+        //   2. delegated click in *capture* phase   (catches dropdown items
+        //      even if something later in the bubble path stops propagation)
+        //   3. direct listeners on each <a> as a final fallback
+        function handleNavClick(e) {
+            const t = e.target;
+            const el = t && t.nodeType === 3 ? t.parentElement : t;
+            const link = el && el.closest ? el.closest('a') : null;
             if (!link) return;
-            // Skip the Products parent link only if its mega-dropdown is
-            // currently open via hover; otherwise treat as navigation.
             closeMenu();
+        }
+        mainNav.addEventListener('click', handleNavClick);
+        mainNav.addEventListener('click', handleNavClick, true);
+
+        function attachDirectCloseHandlers() {
+            mainNav.querySelectorAll('a').forEach(function(a) {
+                if (a.__sbClose) return;
+                a.__sbClose = true;
+                a.addEventListener('click', closeMenu);
+            });
+        }
+        attachDirectCloseHandlers();
+        // Re-attach when React re-renders the nav (e.g. on route change).
+        new MutationObserver(attachDirectCloseHandlers).observe(mainNav, {
+            childList: true,
+            subtree: true,
         });
     }
 }
