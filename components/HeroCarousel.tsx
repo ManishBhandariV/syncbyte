@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { svgPlaceholder } from "@/lib/placeholder";
 
 type Slide = {
   src: string;
@@ -50,7 +51,12 @@ export function HeroCarousel({ slides }: { slides?: Slide[] }) {
                   src={s.src}
                   alt={s.alt}
                   onError={(e) => {
-                    e.currentTarget.src = `https://via.placeholder.com/1920x600/1a365d/ffffff?text=${s.fallbackText}`;
+                    e.currentTarget.src = svgPlaceholder(s.fallbackText.replace(/\+/g, " "), {
+                      width: 1920,
+                      height: 600,
+                      bg: "#1a365d",
+                      fg: "#ffffff",
+                    });
                   }}
                 />
                 <div className="slide-btn-wrap">

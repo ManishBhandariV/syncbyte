@@ -174,7 +174,7 @@ function performSearch(query) {
                 data.results.forEach(function(item) {
                     html += `
                         <a href="${item.url}" class="search-result-item">
-                            <img src="${item.image}" alt="${item.name}" onerror="this.src='https://via.placeholder.com/50x50/e2e8f0/1a365d?text=${encodeURIComponent(item.name.charAt(0))}'">
+                            <img src="${item.image}" alt="${item.name}" onerror="this.onerror=null;this.src='data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="50" height="50" fill="#e2e8f0"/><text x="25" y="25" font-family="Arial" font-size="20" fill="#1a365d" text-anchor="middle" dominant-baseline="middle" font-weight="600">' + item.name.charAt(0).replace(/[<>&"']/g, '') + '</text></svg>')}'">
                             <div class="search-result-info">
                                 <h4>${item.name}</h4>
                                 <span>${item.category}</span>

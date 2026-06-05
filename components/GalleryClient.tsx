@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/config";
+import { svgPlaceholder } from "@/lib/placeholder";
 
 type Video = { id: string; title: string; thumbnail: string; url?: string };
 type ProjectImage = { file: string; title: string; location: string };
@@ -123,7 +124,7 @@ export function GalleryClient({
                   src={img.file.startsWith("http") || img.file.startsWith("/") ? img.file : `/images/gallery/${encodeURIComponent(img.file)}`}
                   alt={img.title}
                   onError={(e) => {
-                    e.currentTarget.src = `https://via.placeholder.com/400x300/e2e8f0/1a365d?text=${encodeURIComponent(img.title)}`;
+                    e.currentTarget.src = svgPlaceholder(img.title, { width: 400, height: 300 });
                   }}
                 />
                 <div className="image-overlay">
@@ -181,7 +182,7 @@ export function GalleryClient({
               }
               alt={current.title}
               onError={(e) => {
-                e.currentTarget.src = `https://via.placeholder.com/800x600/e2e8f0/1a365d?text=${encodeURIComponent(current.title)}`;
+                e.currentTarget.src = svgPlaceholder(current.title, { width: 800, height: 600 });
               }}
             />
           )}

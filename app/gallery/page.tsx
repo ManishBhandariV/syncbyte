@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GalleryClient } from "@/components/GalleryClient";
 import { getYouTubeVideos } from "@/lib/data/youtube";
 import { loadGalleryImages, loadGalleryVideos } from "@/lib/data/gallery-server";
+import { svgPlaceholder } from "@/lib/placeholder";
 
 export const metadata = { title: "Gallery" };
 export const revalidate = 3600;
@@ -31,7 +32,7 @@ export default async function GalleryPage() {
     pinnedAsCards.length + rssDeduped.length > 0
       ? [...pinnedAsCards, ...rssDeduped]
       : [
-          { id: "video1", title: "Biometric Access Control Demo", thumbnail: "https://via.placeholder.com/400x225/1a365d/ffffff?text=Video+1" },
+          { id: "video1", title: "Biometric Access Control Demo", thumbnail: svgPlaceholder("Video", { width: 400, height: 225, bg: "#1a365d", fg: "#ffffff" }) },
         ];
 
   // Images: admin-uploaded first; fall back to bundled project placeholders.
