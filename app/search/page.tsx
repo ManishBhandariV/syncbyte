@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { productCategories, getCategoryUrl } from "@/lib/data/products";
-import { getProductImage } from "@/lib/data/images";
 import { search } from "@/lib/data/search";
+import { loadProductMeta, bestProductImage } from "@/lib/data/product-meta";
+import { loadProductImagesMap } from "@/lib/data/product-images-server";
 
 export const metadata = { title: "Search Results" };
 
@@ -23,6 +24,8 @@ export default async function SearchPage({
   const query = q.trim();
   const performed = query.length > 0;
   const results = performed ? search(query) : [];
+  const meta = await loadProductMeta();
+  const imagesMap = await loadProductImagesMap();
 
   const categoryResults = results.filter((r) => r.type === "category");
   const productResults = results.filter((r) => r.type === "product");
@@ -100,8 +103,10 @@ export default async function SearchPage({
                           <div className="product-card" key={r.url}>
                             <div className="product-image">
                               <img
-                                src={getProductImage(
+                                src={bestProductImage(
                                   r.type === "product" ? r.id : "",
+                                  meta,
+                                  imagesMap,
                                 )}
                                 alt={r.name}
                               />

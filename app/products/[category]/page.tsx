@@ -13,6 +13,7 @@ import {
   displayName,
 } from "@/lib/data/product-meta";
 import { loadEffectiveCategories } from "@/lib/data/products-server";
+import { loadProductImagesMap } from "@/lib/data/product-images-server";
 
 type Params = { category: string };
 
@@ -32,6 +33,7 @@ export default async function CategoryPage({
   const effective = await loadEffectiveCategories(meta);
   const category = effective[slug];
   if (!category) notFound();
+  const imagesMap = await loadProductImagesMap();
 
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;
   const total = Object.values(effective).reduce(
@@ -98,7 +100,7 @@ export default async function CategoryPage({
                   return (
                   <div className="product-card" key={product.id}>
                     <div className="product-image">
-                      <img src={bestProductImage(product.id, meta)} alt={name} />
+                      <img src={bestProductImage(product.id, meta, imagesMap)} alt={name} />
                       <div className="product-overlay">
                         <Link
                           href={getProductUrl(slug, product.id)}

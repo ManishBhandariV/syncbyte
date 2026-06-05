@@ -8,6 +8,7 @@ import {
 } from "@/lib/data/products";
 import { loadEffectiveCategories } from "@/lib/data/products-server";
 import { loadEffectiveBrands } from "@/lib/data/brands-effective";
+import { loadProductImagesMap } from "@/lib/data/product-images-server";
 import {
   loadProductMeta,
   sortByMeta,
@@ -42,6 +43,7 @@ export default async function ProductsPage({
   const meta = await loadProductMeta();
   const effective = await loadEffectiveCategories(meta);
   const brandList = await loadEffectiveBrands();
+  const imagesMap = await loadProductImagesMap();
   const selectedBrand = brand
     ? brandList.find((x) => x.slug === brand)
     : undefined;
@@ -173,7 +175,7 @@ export default async function ProductsPage({
                         return (
                         <div className="product-card product-card-compact" key={product.id}>
                           <div className="product-image">
-                            <img src={bestProductImage(product.id, meta)} alt={name} />
+                            <img src={bestProductImage(product.id, meta, imagesMap)} alt={name} />
                             <div className="product-overlay">
                               <Link
                                 href={getProductUrl(slug, product.id)}
