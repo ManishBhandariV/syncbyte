@@ -45,24 +45,20 @@ export function loadHeaderLogo(): LoadedImage | null {
 }
 
 /**
- * Customer logos for the "Our Esteemed Customers" wall — reuses the same logos
- * shown on the homepage carousel. Sorted numerically, capped at `limit`.
+ * Customer logos for the "Our Esteemed Customers" wall — the exact logos
+ * extracted from the original SB_Quote_Top.docx, kept in document order
+ * (filenames c01, c02, …). Shows all by default.
  */
-export function loadCustomerLogos(limit = 18): LoadedImage[] {
+export function loadCustomerLogos(limit = 100): LoadedImage[] {
   try {
-    const dir = path.join(PUBLIC, "images", "customers");
+    const dir = path.join(PUBLIC, "images", "quote", "customers");
     const files = fs
       .readdirSync(dir)
       .filter((f) => /\.(png|jpe?g)$/i.test(f))
-      .sort((a, b) => {
-        const na = parseInt(a, 10);
-        const nb = parseInt(b, 10);
-        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-        return a.localeCompare(b);
-      })
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
       .slice(0, limit);
     return files
-      .map((f) => loadImage(path.posix.join("images/customers", f)))
+      .map((f) => loadImage(path.posix.join("images/quote/customers", f)))
       .filter((x): x is LoadedImage => x !== null);
   } catch (e) {
     console.warn("[quote assets] failed to list customer logos", e);

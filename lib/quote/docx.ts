@@ -159,7 +159,7 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
   const about: Paragraph[] = [heading(QUOTE_ABOUT.heading), ...QUOTE_ABOUT.paragraphs.map((p) => para(p))];
 
   // Our Esteemed Customers — a centered grid of client logos.
-  const customers = loadCustomerLogos(18);
+  const customers = loadCustomerLogos();
   const esteemed: Array<Paragraph | Table> = [];
   if (customers.length > 0) {
     esteemed.push(heading("Our Esteemed Customers"));

@@ -331,7 +331,7 @@ function QuoteDocument({
 /** Render a quote to a PDF Buffer (Node). */
 export async function renderQuotePdf(q: QuoteInput): Promise<Buffer> {
   const logo = loadHeaderLogo();
-  const customers = loadCustomerLogos(18);
+  const customers = loadCustomerLogos();
   return renderToBuffer(
     <QuoteDocument q={q} logo={logo} customers={customers} />,
   );
