@@ -163,3 +163,24 @@ export type BrandLogo = {
   logo_url: string;
   updated_at: string;
 };
+
+/**
+ * A saved quotation. `items` is a JSON-encoded QuoteItem[] (see lib/data/quotes.ts).
+ * Boilerplate (company header, About, T&C, bank details) is NOT stored here —
+ * it lives in lib/data/quote-config.ts and is applied at render time.
+ */
+export type QuoteRow = {
+  id: number;
+  quote_number: string;
+  client_name: string;
+  client_location: string;
+  client_contact: string;
+  quote_date: string;
+  validity: string;
+  scope_of_work: string;
+  gst_percent: number;
+  items: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};

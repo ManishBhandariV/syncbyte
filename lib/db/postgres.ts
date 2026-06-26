@@ -189,6 +189,21 @@ const SCHEMA_STATEMENTS = [
     display_order INTEGER DEFAULT 0,
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `CREATE TABLE IF NOT EXISTS quotes (
+    id              SERIAL PRIMARY KEY,
+    quote_number    TEXT UNIQUE NOT NULL,
+    client_name     TEXT NOT NULL,
+    client_location TEXT NOT NULL DEFAULT '',
+    client_contact  TEXT NOT NULL DEFAULT '',
+    quote_date      TEXT NOT NULL,
+    validity        TEXT NOT NULL DEFAULT '1 Week (7 Days)',
+    scope_of_work   TEXT NOT NULL DEFAULT '',
+    gst_percent     REAL NOT NULL DEFAULT 18,
+    items           TEXT NOT NULL DEFAULT '[]',
+    notes           TEXT NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+  )`,
 ];
 
 // Tables without an `id` column — skip the auto-appended RETURNING id.

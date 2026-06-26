@@ -51,3 +51,8 @@ next-env.d.ts
 /data/*.db-shm
 /data/*.db-wal
 .env*.local
+
+# Local quote reference (contains client pricing — do not commit)
+SB_Quote_Top.docx
+*.docx
+!app/**/*.docx

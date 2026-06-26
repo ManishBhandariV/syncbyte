@@ -18,6 +18,7 @@ export function AdminTopBar({
     | "gallery"
     | "brands"
     | "categories"
+    | "quotes"
     | "downloads-page";
   pendingReviewCount?: number;
 }) {
@@ -29,6 +30,7 @@ export function AdminTopBar({
     { id: "brands",         label: "Brands",    href: "/admin/brands" },
     { id: "categories",     label: "Categories", href: "/admin/categories" },
     { id: "downloads-page", label: "Downloads", href: "/admin/downloads-page" },
+    { id: "quotes",         label: "Quotes",    href: "/admin/quotes" },
     { id: "reviews",        label: "Reviews",   href: "/admin/reviews" },
     { id: "enquiries",      label: "Enquiries", href: "/admin/enquiries" },
   ] as const;

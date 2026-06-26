@@ -1,0 +1,128 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { getDb } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { nextQuoteNumber, getQuote } from "@/lib/data/quotes-server";
+import { parseItems, type QuoteItem } from "@/lib/data/quotes";
+
+export type QuoteActionResult = { ok: boolean; message: string };
+
+function sanitizeItems(raw: string): QuoteItem[] {
+  return parseItems(raw); // already validates + drops blank-description rows
+}
+
+/**
+ * Create (id <= 0) or update (id > 0) a quote.
+ * On create, redirects to the edit page so the user can immediately download.
+ * On update, returns a success banner result.
+ */
+export async function saveQuote(
+  _prev: QuoteActionResult | null,
+  formData: FormData,
+): Promise<QuoteActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, message: "Unauthorized." };
+
+  const id = Number(formData.get("id") ?? 0);
+  const clientName = String(formData.get("client_name") ?? "").trim();
+  const clientLocation = String(formData.get("client_location") ?? "").trim();
+  const clientContact = String(formData.get("client_contact") ?? "").trim();
+  const quoteDate = String(formData.get("quote_date") ?? "").trim();
+  const validity = String(formData.get("validity") ?? "").trim();
+  const scope = String(formData.get("scope_of_work") ?? "").trim();
+  const gstPercent = Number(formData.get("gst_percent") ?? 18);
+  const notes = String(formData.get("notes") ?? "").trim();
+  const items = sanitizeItems(String(formData.get("items") ?? "[]"));
+
+  if (!clientName) return { ok: false, message: "Client name is required." };
+  if (!quoteDate) return { ok: false, message: "Quote date is required." };
+  if (items.length === 0)
+    return { ok: false, message: "Add at least one line item." };
+  if (!Number.isFinite(gstPercent) || gstPercent < 0 || gstPercent > 100)
+    return { ok: false, message: "GST % must be between 0 and 100." };
+
+  const db = await getDb();
+  const itemsJson = JSON.stringify(items);
+
+  try {
+    if (id > 0) {
+      await db.run(
+        `UPDATE quotes SET client_name = ?, client_location = ?, client_contact = ?,
+           quote_date = ?, validity = ?, scope_of_work = ?, gst_percent = ?,
+           items = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes, id],
+      );
+      revalidatePath("/admin/quotes");
+      revalidatePath(`/admin/quotes/${id}/edit`);
+      return { ok: true, message: "Quote saved." };
+    }
+
+    // Create: generate quote number from the quote's year.
+    const year = Number(quoteDate.slice(0, 4)) || new Date().getFullYear();
+    const quoteNumber = await nextQuoteNumber(year);
+    const result = await db.run(
+      `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
+         quote_date, validity, scope_of_work, gst_percent, items, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [quoteNumber, clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes],
+    );
+    revalidatePath("/admin/quotes");
+    const newId = result.insertId;
+    if (newId) redirect(`/admin/quotes/${newId}/edit?created=1`);
+    return { ok: true, message: `Quote ${quoteNumber} created.` };
+  } catch (e) {
+    // redirect() throws a special error we must rethrow.
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
+    const msg = (e as Error).message ?? "";
+    if (msg.includes("NEXT_REDIRECT")) throw e;
+    console.error("[saveQuote]", e);
+    return { ok: false, message: `Save failed: ${msg}` };
+  }
+}
+
+export async function deleteQuote(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM quotes WHERE id = ?", [id]);
+  revalidatePath("/admin/quotes");
+}
+
+/** Clone an existing quote into a new draft and open it for editing. */
+export async function duplicateQuote(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const src = await getQuote(id);
+  if (!src) return;
+
+  const db = await getDb();
+  const year =
+    Number(src.quote_date.slice(0, 4)) || new Date().getFullYear();
+  const quoteNumber = await nextQuoteNumber(year);
+  const result = await db.run(
+    `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
+       quote_date, validity, scope_of_work, gst_percent, items, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      quoteNumber,
+      `${src.client_name} (copy)`,
+      src.client_location,
+      src.client_contact,
+      src.quote_date,
+      src.validity,
+      src.scope_of_work,
+      src.gst_percent,
+      JSON.stringify(src.items),
+      src.notes,
+    ],
+  );
+  revalidatePath("/admin/quotes");
+  if (result.insertId) redirect(`/admin/quotes/${result.insertId}/edit`);
+}
