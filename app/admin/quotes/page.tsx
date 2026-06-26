@@ -60,7 +60,12 @@ export default async function AdminQuotesPage() {
                   const { totalAmount } = computeTotals(q.items, q.gst_percent);
                   return (
                     <tr key={q.id} style={{ borderBottom: "1px solid #f0f4f8" }}>
-                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#0ea5e9" }}>{q.quote_number}</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#0ea5e9" }}>
+                        {q.quote_number}
+                        <span style={{ color: "#94a3b8", fontWeight: 600, fontSize: "0.78rem" }}>
+                          {"  ·  "}rev {String(q.version).padStart(2, "0")}
+                        </span>
+                      </td>
                       <td style={{ padding: "10px 12px" }}>
                         {q.client_name}
                         {q.client_location ? <span style={{ color: "#94a3b8" }}> · {q.client_location}</span> : null}

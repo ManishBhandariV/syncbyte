@@ -4,13 +4,35 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { nextQuoteNumber, getQuote } from "@/lib/data/quotes-server";
+import { nextQuoteNumber, getQuote, type Quote } from "@/lib/data/quotes-server";
 import { parseItems, type QuoteItem } from "@/lib/data/quotes";
 
 export type QuoteActionResult = { ok: boolean; message: string };
 
 function sanitizeItems(raw: string): QuoteItem[] {
   return parseItems(raw); // already validates + drops blank-description rows
+}
+
+/** True if the incoming form data differs from the stored quote's content. */
+function contentChanged(
+  existing: Quote,
+  next: {
+    clientName: string; clientLocation: string; clientContact: string;
+    quoteDate: string; validity: string; scope: string;
+    gstPercent: number; notes: string; itemsJson: string;
+  },
+): boolean {
+  return (
+    existing.client_name !== next.clientName ||
+    existing.client_location !== next.clientLocation ||
+    existing.client_contact !== next.clientContact ||
+    existing.quote_date !== next.quoteDate ||
+    existing.validity !== next.validity ||
+    existing.scope_of_work !== next.scope ||
+    Number(existing.gst_percent) !== Number(next.gstPercent) ||
+    existing.notes !== next.notes ||
+    JSON.stringify(existing.items) !== next.itemsJson
+  );
 }
 
 /**
@@ -48,25 +70,40 @@ export async function saveQuote(
 
   try {
     if (id > 0) {
+      // Bump the revision only when the content actually changed, so repeated
+      // saves / auto-saves-before-download don't inflate the version.
+      const existing = await getQuote(id);
+      const nextVersion = existing
+        ? contentChanged(existing, {
+            clientName, clientLocation, clientContact, quoteDate,
+            validity, scope, gstPercent, notes, itemsJson,
+          })
+          ? existing.version + 1
+          : existing.version
+        : 1;
       await db.run(
         `UPDATE quotes SET client_name = ?, client_location = ?, client_contact = ?,
            quote_date = ?, validity = ?, scope_of_work = ?, gst_percent = ?,
-           items = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+           items = ?, notes = ?, version = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
-        [clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes, id],
+        [clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes, nextVersion, id],
       );
       revalidatePath("/admin/quotes");
       revalidatePath(`/admin/quotes/${id}/edit`);
-      return { ok: true, message: "Quote saved." };
+      const bumped = existing && nextVersion !== existing.version;
+      return {
+        ok: true,
+        message: bumped ? `Saved as revision ${String(nextVersion).padStart(2, "0")}.` : "Saved (no changes).",
+      };
     }
 
-    // Create: generate quote number from the quote's year.
+    // Create: generate base quote number from the quote's year. Version starts at 1.
     const year = Number(quoteDate.slice(0, 4)) || new Date().getFullYear();
     const quoteNumber = await nextQuoteNumber(year);
     const result = await db.run(
       `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
-         quote_date, validity, scope_of_work, gst_percent, items, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         quote_date, validity, scope_of_work, gst_percent, items, notes, version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [quoteNumber, clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes],
     );
     revalidatePath("/admin/quotes");
@@ -108,8 +145,8 @@ export async function duplicateQuote(formData: FormData): Promise<void> {
   const quoteNumber = await nextQuoteNumber(year);
   const result = await db.run(
     `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
-       quote_date, validity, scope_of_work, gst_percent, items, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       quote_date, validity, scope_of_work, gst_percent, items, notes, version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [
       quoteNumber,
       `${src.client_name} (copy)`,

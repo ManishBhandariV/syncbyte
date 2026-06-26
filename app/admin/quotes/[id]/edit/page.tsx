@@ -29,6 +29,7 @@ export default async function EditQuotePage({
         <QuoteForm
           id={quote.id}
           quoteNumber={quote.quote_number}
+          version={quote.version}
           justCreated={created === "1"}
           defaults={{
             client_name: quote.client_name,

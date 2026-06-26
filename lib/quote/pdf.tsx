@@ -11,6 +11,7 @@ import {
 import {
   computeTotals,
   formatINR,
+  fullQuoteId,
   type QuoteInput,
 } from "@/lib/data/quotes";
 import {
@@ -74,13 +75,25 @@ const s = StyleSheet.create({
     justifyContent: "center",
     padding: 4,
   },
-  companyName: { fontSize: 15, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "center" },
-  addr: { fontSize: 8, color: GREY, marginTop: 2, textAlign: "center" },
-  meta: { fontSize: 8, color: GREY, marginTop: 2, textAlign: "center" },
-  rule: { borderBottomWidth: 1.5, borderBottomColor: BRAND, marginTop: 8, marginBottom: 12 },
-  titleWrap: { alignItems: "center", marginBottom: 4 },
+  companyName: { fontSize: 15, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "center", marginBottom: 3 },
+  addr: { fontSize: 8, color: GREY, textAlign: "center", lineHeight: 1.3 },
+  meta: { fontSize: 8, color: GREY, marginTop: 4, textAlign: "center" },
+  rule: { borderBottomWidth: 1.5, borderBottomColor: BRAND, marginTop: 10, marginBottom: 14 },
+  titleRow: {
+    position: "relative",
+    justifyContent: "center",
+    minHeight: 16,
+    marginBottom: 4,
+  },
   title: { fontSize: 13, fontFamily: "Helvetica-Bold", color: BRAND, letterSpacing: 0.5, textAlign: "center" },
-  quoteNo: { fontSize: 9, color: ACCENT, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 2 },
+  quoteNo: {
+    position: "absolute",
+    right: 0,
+    top: 1,
+    fontSize: 9,
+    color: ACCENT,
+    fontFamily: "Helvetica-Bold",
+  },
   sectionHeading: {
     fontSize: 10.5,
     fontFamily: "Helvetica-Bold",
@@ -177,9 +190,10 @@ function QuoteDocument({
     q.items,
     q.gst_percent,
   );
+  const docId = fullQuoteId(q.quote_number, q.version);
   return (
     <Document
-      title={`Quotation ${q.quote_number} — ${q.client_name}`}
+      title={`Quotation ${docId} — ${q.client_name}`}
       author={QUOTE_COMPANY.name}
     >
       <Page size="A4" style={s.page}>
@@ -203,9 +217,9 @@ function QuoteDocument({
         </Text>
         <View style={s.rule} />
 
-        <View style={s.titleWrap}>
+        <View style={s.titleRow}>
           <Text style={s.title}>BUSINESS PROPOSAL &amp; QUOTATION</Text>
-          <Text style={s.quoteNo}>{q.quote_number}</Text>
+          <Text style={s.quoteNo}>{fullQuoteId(q.quote_number, q.version)}</Text>
         </View>
 
         {/* About */}
@@ -320,7 +334,7 @@ function QuoteDocument({
           style={s.footer}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `${QUOTE_COMPANY.name}  ·  ${q.quote_number}  ·  Page ${pageNumber} of ${totalPages}`
+            `${QUOTE_COMPANY.name}  ·  ${docId}  ·  Page ${pageNumber} of ${totalPages}`
           }
         />
       </Page>

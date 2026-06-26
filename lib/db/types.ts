@@ -181,6 +181,7 @@ export type QuoteRow = {
   gst_percent: number;
   items: string;
   notes: string;
+  version: number;
   created_at: string;
   updated_at: string;
 };

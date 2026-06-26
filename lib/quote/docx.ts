@@ -12,10 +12,13 @@ import {
   BorderStyle,
   Header,
   ImageRun,
+  TabStopType,
+  TabStopPosition,
 } from "docx";
 import {
   computeTotals,
   formatINR,
+  fullQuoteId,
   type QuoteInput,
 } from "@/lib/data/quotes";
 import {
@@ -145,12 +148,14 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
       ],
       border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: BRAND, space: 4 } },
     }),
+    // Title left, full revision id flush right (tab stop at the right margin).
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 160, after: 60 },
+      spacing: { before: 200, after: 80 },
+      tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "E2E8F0", space: 3 } },
       children: [
         new TextRun({ text: "BUSINESS PROPOSAL & QUOTATION", bold: true, size: 26, color: BRAND }),
-        new TextRun({ text: `   ·   ${q.quote_number}`, bold: true, size: 18, color: ACCENT }),
+        new TextRun({ text: `\t${fullQuoteId(q.quote_number, q.version)}`, bold: true, size: 18, color: ACCENT }),
       ],
     }),
   ];

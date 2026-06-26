@@ -21,7 +21,18 @@ export type QuoteInput = {
   gst_percent: number;
   items: QuoteItem[];
   notes: string;
+  version: number;
 };
+
+/**
+ * Full document identifier including the revision suffix, e.g.
+ * base "SB-2026-02241" + version 3 → "SB-2026-02241-03".
+ * This is what appears in the document and download filename.
+ */
+export function fullQuoteId(quoteNumber: string, version: number): string {
+  const v = Math.max(1, Math.floor(Number(version) || 1));
+  return `${quoteNumber}-${String(v).padStart(2, "0")}`;
+}
 
 export type QuoteTotals = {
   lines: Array<QuoteItem & { amount: number }>;

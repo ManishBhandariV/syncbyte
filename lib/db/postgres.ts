@@ -201,9 +201,11 @@ const SCHEMA_STATEMENTS = [
     gst_percent     REAL NOT NULL DEFAULT 18,
     items           TEXT NOT NULL DEFAULT '[]',
     notes           TEXT NOT NULL DEFAULT '',
+    version         INTEGER NOT NULL DEFAULT 1,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `ALTER TABLE quotes ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1`,
 ];
 
 // Tables without an `id` column — skip the auto-appended RETURNING id.

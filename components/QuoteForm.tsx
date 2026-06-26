@@ -1,14 +1,15 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { saveQuote, type QuoteActionResult } from "@/app/admin/quote-actions";
 import { FormBanner } from "@/components/FormBanner";
-import { computeTotals, formatINR, type QuoteItem } from "@/lib/data/quotes";
+import { computeTotals, formatINR, fullQuoteId, type QuoteItem } from "@/lib/data/quotes";
 
 type Props = {
   id?: number;
   quoteNumber?: string;
+  version?: number;
   defaults: {
     client_name: string;
     client_location: string;
@@ -44,12 +45,15 @@ function blankItem(): QuoteItem {
   return { description: "", qty: 1, unit_price: 0 };
 }
 
-export function QuoteForm({ id, quoteNumber, defaults, justCreated }: Props) {
+export function QuoteForm({ id, quoteNumber, version, defaults, justCreated }: Props) {
   const [result, action, pending] = useActionState(saveQuote, INITIAL);
   const [items, setItems] = useState<QuoteItem[]>(
     defaults.items.length > 0 ? defaults.items : [blankItem()],
   );
   const [gst, setGst] = useState<number>(defaults.gst_percent);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [downloading, setDownloading] = useState<null | "pdf" | "docx">(null);
+  const [dlMsg, setDlMsg] = useState<QuoteActionResult | null>(null);
 
   const totals = useMemo(() => computeTotals(items, gst), [items, gst]);
 
@@ -61,8 +65,30 @@ export function QuoteForm({ id, quoteNumber, defaults, justCreated }: Props) {
 
   const cleanItems = items.filter((it) => it.description.trim().length > 0);
 
+  // Download = auto-save the current form, then fetch the file. The version is
+  // bumped server-side only if something actually changed.
+  async function saveThenDownload(fmt: "pdf" | "docx") {
+    if (!id || !formRef.current) return;
+    setDownloading(fmt);
+    setDlMsg(null);
+    try {
+      const fd = new FormData(formRef.current);
+      fd.set("items", JSON.stringify(cleanItems));
+      const res = await saveQuote(null, fd);
+      if (res?.ok) {
+        window.location.assign(`/admin/quotes/${id}/${fmt}`);
+      } else {
+        setDlMsg(res ?? { ok: false, message: "Save failed — nothing downloaded." });
+      }
+    } catch (e) {
+      setDlMsg({ ok: false, message: `Download failed: ${(e as Error).message}` });
+    } finally {
+      setDownloading(null);
+    }
+  }
+
   return (
-    <form action={action}>
+    <form action={action} ref={formRef}>
       <input type="hidden" name="id" value={id ?? 0} />
       <input type="hidden" name="items" value={JSON.stringify(cleanItems)} />
 
@@ -70,6 +96,7 @@ export function QuoteForm({ id, quoteNumber, defaults, justCreated }: Props) {
         <FormBanner result={{ ok: true, message: `Quote ${quoteNumber} created. Download it below or keep editing.` }} />
       )}
       <FormBanner result={result} />
+      <FormBanner result={dlMsg} />
 
       {/* Client details card */}
       <div style={cardStyle}>
@@ -80,6 +107,11 @@ export function QuoteForm({ id, quoteNumber, defaults, justCreated }: Props) {
           {quoteNumber && (
             <span style={{ fontSize: "0.85rem", color: "#0ea5e9", fontWeight: 700 }}>
               {quoteNumber}
+              {version ? (
+                <span style={{ color: "#94a3b8", fontWeight: 600 }}>
+                  {"  ·  "}rev {String(version).padStart(2, "0")} ({fullQuoteId(quoteNumber, version)})
+                </span>
+              ) : null}
             </span>
           )}
         </div>
@@ -238,14 +270,26 @@ export function QuoteForm({ id, quoteNumber, defaults, justCreated }: Props) {
 
         {id ? (
           <>
-            <a href={`/admin/quotes/${id}/pdf`} style={dlBtnStyle("#dc2626")}>
-              <i className="fas fa-file-pdf" /> Download PDF
-            </a>
-            <a href={`/admin/quotes/${id}/docx`} style={dlBtnStyle("#2563eb")}>
-              <i className="fas fa-file-word" /> Download Word
-            </a>
+            <button
+              type="button"
+              onClick={() => saveThenDownload("pdf")}
+              disabled={downloading !== null || cleanItems.length === 0}
+              style={dlBtnStyle("#dc2626", downloading !== null)}
+            >
+              <i className={`fas ${downloading === "pdf" ? "fa-spinner fa-spin" : "fa-file-pdf"}`} />{" "}
+              {downloading === "pdf" ? "Saving…" : "Download PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => saveThenDownload("docx")}
+              disabled={downloading !== null || cleanItems.length === 0}
+              style={dlBtnStyle("#2563eb", downloading !== null)}
+            >
+              <i className={`fas ${downloading === "docx" ? "fa-spinner fa-spin" : "fa-file-word"}`} />{" "}
+              {downloading === "docx" ? "Saving…" : "Download Word"}
+            </button>
             <span style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
-              Save first to include your latest edits in the download.
+              Downloads auto-save first — a new revision is created only if you changed something.
             </span>
           </>
         ) : (
@@ -317,10 +361,11 @@ function saveBtnStyle(disabled: boolean): React.CSSProperties {
     opacity: disabled ? 0.6 : 1,
   };
 }
-function dlBtnStyle(bg: string): React.CSSProperties {
+function dlBtnStyle(bg: string, disabled = false): React.CSSProperties {
   return {
     background: bg,
     color: "#fff",
+    border: "none",
     borderRadius: 8,
     padding: "10px 18px",
     fontSize: "0.85rem",
@@ -329,5 +374,7 @@ function dlBtnStyle(bg: string): React.CSSProperties {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
+    cursor: disabled ? "wait" : "pointer",
+    opacity: disabled ? 0.7 : 1,
   };
 }

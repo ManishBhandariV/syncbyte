@@ -59,3 +59,15 @@ export const QUOTE_DEFAULTS = {
   validity: "1 Week (7 Days)",
   scopeOfWork: "Supply and installation of Biometric Access Control Device.",
 } as const;
+
+/**
+ * Quote-number scheme: SB-{year}-{seq}. The sequence resets every calendar
+ * year and is zero-padded to `pad` digits. `yearSeed[year]` is the last number
+ * considered "already used", so the next quote for that year is seed + 1 — this
+ * lets us continue an existing external sequence (2026 resumes at 2241).
+ */
+export const QUOTE_NUMBER = {
+  prefix: "SB",
+  pad: 5,
+  yearSeed: { 2026: 2240 } as Record<number, number>,
+} as const;
