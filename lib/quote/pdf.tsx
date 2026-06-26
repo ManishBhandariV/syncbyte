@@ -4,6 +4,7 @@ import {
   Page,
   View,
   Text,
+  Image,
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
@@ -18,6 +19,11 @@ import {
   QUOTE_TERMS,
   QUOTE_BANK,
 } from "@/lib/data/quote-config";
+import {
+  loadHeaderLogo,
+  loadCustomerLogos,
+  type LoadedImage,
+} from "@/lib/quote/assets";
 
 const BRAND = QUOTE_COMPANY.brandColor;
 const ACCENT = QUOTE_COMPANY.accentColor;
@@ -27,7 +33,7 @@ const BORDER = "#e2e8f0";
 
 const s = StyleSheet.create({
   page: {
-    paddingTop: 36,
+    paddingTop: 78, // leave room for the fixed logo header
     paddingBottom: 48,
     paddingHorizontal: 40,
     fontSize: 9,
@@ -35,12 +41,46 @@ const s = StyleSheet.create({
     color: "#1e293b",
     lineHeight: 1.4,
   },
-  companyName: { fontSize: 15, fontFamily: "Helvetica-Bold", color: BRAND },
-  addr: { fontSize: 8, color: GREY, marginTop: 2 },
-  meta: { fontSize: 8, color: GREY, marginTop: 2 },
+  logoHeader: {
+    position: "absolute",
+    top: 22,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  logoHeaderImg: { width: 150 },
+  logoHeaderRule: {
+    marginTop: 8,
+    marginHorizontal: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  customerWall: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  customerCell: {
+    width: 92,
+    height: 40,
+    backgroundColor: "#ffffff",
+    borderWidth: 0.5,
+    borderColor: "#eef2f7",
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 4,
+  },
+  companyName: { fontSize: 15, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "center" },
+  addr: { fontSize: 8, color: GREY, marginTop: 2, textAlign: "center" },
+  meta: { fontSize: 8, color: GREY, marginTop: 2, textAlign: "center" },
   rule: { borderBottomWidth: 1.5, borderBottomColor: BRAND, marginTop: 8, marginBottom: 12 },
-  title: { fontSize: 13, fontFamily: "Helvetica-Bold", color: BRAND, letterSpacing: 0.5 },
-  quoteNo: { fontSize: 9, color: ACCENT, fontFamily: "Helvetica-Bold" },
+  titleWrap: { alignItems: "center", marginBottom: 4 },
+  title: { fontSize: 13, fontFamily: "Helvetica-Bold", color: BRAND, letterSpacing: 0.5, textAlign: "center" },
+  quoteNo: { fontSize: 9, color: ACCENT, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 2 },
   sectionHeading: {
     fontSize: 10.5,
     fontFamily: "Helvetica-Bold",
@@ -124,7 +164,15 @@ function prettyDate(iso: string): string {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : iso;
 }
 
-function QuoteDocument({ q }: { q: QuoteInput }) {
+function QuoteDocument({
+  q,
+  logo,
+  customers,
+}: {
+  q: QuoteInput;
+  logo: LoadedImage | null;
+  customers: LoadedImage[];
+}) {
   const { lines, netAmount, gstAmount, totalAmount } = computeTotals(
     q.items,
     q.gst_percent,
@@ -135,7 +183,16 @@ function QuoteDocument({ q }: { q: QuoteInput }) {
       author={QUOTE_COMPANY.name}
     >
       <Page size="A4" style={s.page}>
-        {/* Header */}
+        {/* Centered logo header — repeats on every page */}
+        {logo ? (
+          <View style={s.logoHeader} fixed>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
+            <Image src={logo.dataUri} style={s.logoHeaderImg} />
+            <View style={s.logoHeaderRule} />
+          </View>
+        ) : null}
+
+        {/* Company text block */}
         <Text style={s.companyName}>{QUOTE_COMPANY.name}</Text>
         {QUOTE_COMPANY.addressLines.map((l, i) => (
           <Text key={i} style={s.addr}>{l}</Text>
@@ -146,7 +203,7 @@ function QuoteDocument({ q }: { q: QuoteInput }) {
         </Text>
         <View style={s.rule} />
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View style={s.titleWrap}>
           <Text style={s.title}>BUSINESS PROPOSAL &amp; QUOTATION</Text>
           <Text style={s.quoteNo}>{q.quote_number}</Text>
         </View>
@@ -156,6 +213,21 @@ function QuoteDocument({ q }: { q: QuoteInput }) {
         {QUOTE_ABOUT.paragraphs.map((p, i) => (
           <Text key={i} style={s.para}>{p}</Text>
         ))}
+
+        {/* Esteemed customers */}
+        {customers.length > 0 ? (
+          <>
+            <Text style={s.sectionHeading}>Our Esteemed Customers</Text>
+            <View style={s.customerWall}>
+              {customers.map((c, i) => (
+                <View key={i} style={s.customerCell}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={c.dataUri} style={{ maxWidth: 84, maxHeight: 32, objectFit: "contain" }} />
+                </View>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         {/* Client info */}
         <View style={s.infoBox}>
@@ -258,5 +330,9 @@ function QuoteDocument({ q }: { q: QuoteInput }) {
 
 /** Render a quote to a PDF Buffer (Node). */
 export async function renderQuotePdf(q: QuoteInput): Promise<Buffer> {
-  return renderToBuffer(<QuoteDocument q={q} />);
+  const logo = loadHeaderLogo();
+  const customers = loadCustomerLogos(18);
+  return renderToBuffer(
+    <QuoteDocument q={q} logo={logo} customers={customers} />,
+  );
 }

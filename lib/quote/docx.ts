@@ -10,6 +10,8 @@ import {
   WidthType,
   AlignmentType,
   BorderStyle,
+  Header,
+  ImageRun,
 } from "docx";
 import {
   computeTotals,
@@ -22,6 +24,12 @@ import {
   QUOTE_TERMS,
   QUOTE_BANK,
 } from "@/lib/data/quote-config";
+import {
+  loadHeaderLogo,
+  loadCustomerLogos,
+  scaleToHeight,
+  fitBox,
+} from "@/lib/quote/assets";
 
 const BRAND = "1A365D";
 const ACCENT = "0EA5E9";
@@ -91,15 +99,42 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
     q.gst_percent,
   );
 
-  // Header
+  // Centered Syncbyte logo as the running page header (repeats on every page).
+  const logo = loadHeaderLogo();
+  const runningHeader = logo
+    ? new Header({
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 60 },
+            children: [
+              new ImageRun({
+                data: logo.buffer,
+                type: logo.type,
+                transformation: scaleToHeight(logo, 34),
+              }),
+            ],
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "E2E8F0", space: 2 } },
+          }),
+        ],
+      })
+    : undefined;
+
+  // Centered company text block
   const header: Paragraph[] = [
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       children: [new TextRun({ text: QUOTE_COMPANY.name, bold: true, size: 30, color: BRAND })],
     }),
     ...QUOTE_COMPANY.addressLines.map(
-      (l) => new Paragraph({ children: [new TextRun({ text: l, size: 16, color: GREY })] }),
+      (l) =>
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: l, size: 16, color: GREY })],
+        }),
     ),
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       spacing: { after: 80 },
       children: [
         new TextRun({
@@ -111,16 +146,56 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
       border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: BRAND, space: 4 } },
     }),
     new Paragraph({
+      alignment: AlignmentType.CENTER,
       spacing: { before: 160, after: 60 },
       children: [
         new TextRun({ text: "BUSINESS PROPOSAL & QUOTATION", bold: true, size: 26, color: BRAND }),
-        new TextRun({ text: `        ${q.quote_number}`, bold: true, size: 18, color: ACCENT }),
+        new TextRun({ text: `   ·   ${q.quote_number}`, bold: true, size: 18, color: ACCENT }),
       ],
     }),
   ];
 
   // About
   const about: Paragraph[] = [heading(QUOTE_ABOUT.heading), ...QUOTE_ABOUT.paragraphs.map((p) => para(p))];
+
+  // Our Esteemed Customers — a centered grid of client logos.
+  const customers = loadCustomerLogos(18);
+  const esteemed: Array<Paragraph | Table> = [];
+  if (customers.length > 0) {
+    esteemed.push(heading("Our Esteemed Customers"));
+    const perRow = 6;
+    const rows: TableRow[] = [];
+    for (let i = 0; i < customers.length; i += perRow) {
+      const slice = customers.slice(i, i + perRow);
+      rows.push(
+        new TableRow({
+          children: Array.from({ length: perRow }).map((_, j) => {
+            const img = slice[j];
+            return new TableCell({
+              width: { size: Math.floor(100 / perRow), type: WidthType.PERCENTAGE },
+              margins: { top: 40, bottom: 40, left: 40, right: 40 },
+              verticalAlign: "center",
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: img
+                    ? [new ImageRun({ data: img.buffer, type: img.type, transformation: fitBox(img, 80, 30) })]
+                    : [new TextRun("")],
+                }),
+              ],
+            });
+          }),
+        }),
+      );
+    }
+    esteemed.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER, insideHorizontal: NO_BORDER, insideVertical: NO_BORDER },
+        rows,
+      }),
+    );
+  }
 
   // Client info table (2 col pairs)
   const infoTable = new Table({
@@ -247,9 +322,11 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
     sections: [
       {
         properties: {},
+        headers: runningHeader ? { default: runningHeader } : undefined,
         children: [
           ...header,
           ...about,
+          ...esteemed,
           new Paragraph({ spacing: { before: 120 } }),
           infoTable,
           ...scope,
