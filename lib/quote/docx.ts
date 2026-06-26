@@ -123,22 +123,24 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
       })
     : undefined;
 
-  // Centered company text block
+  // Centered company text block, with deliberate even spacing.
   const header: Paragraph[] = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: QUOTE_COMPANY.name, bold: true, size: 30, color: BRAND })],
+      spacing: { after: 60 },
+      children: [new TextRun({ text: QUOTE_COMPANY.name, bold: true, size: 29, color: BRAND })],
     }),
     ...QUOTE_COMPANY.addressLines.map(
       (l) =>
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: l, size: 16, color: GREY })],
+          spacing: { after: 0, line: 264, lineRule: "auto" },
+          children: [new TextRun({ text: l, size: 17, color: GREY })],
         }),
     ),
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
+      spacing: { before: 80, after: 100 },
       children: [
         new TextRun({
           text: `GSTIN: ${QUOTE_COMPANY.gstin}  |  Email: ${QUOTE_COMPANY.email} (cc: ${QUOTE_COMPANY.emailCc})  |  Phone: ${QUOTE_COMPANY.phones.join(" | ")}`,
@@ -332,7 +334,7 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
           ...header,
           ...about,
           ...esteemed,
-          new Paragraph({ spacing: { before: 120 } }),
+          heading("Quotation Details"),
           infoTable,
           ...scope,
           heading("Commercial Estimate"),

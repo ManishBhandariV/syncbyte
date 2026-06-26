@@ -34,7 +34,7 @@ const BORDER = "#e2e8f0";
 
 const s = StyleSheet.create({
   page: {
-    paddingTop: 78, // leave room for the fixed logo header
+    paddingTop: 86, // leave room for the fixed logo header
     paddingBottom: 48,
     paddingHorizontal: 40,
     fontSize: 9,
@@ -44,14 +44,14 @@ const s = StyleSheet.create({
   },
   logoHeader: {
     position: "absolute",
-    top: 22,
+    top: 24,
     left: 0,
     right: 0,
     alignItems: "center",
   },
   logoHeaderImg: { width: 150 },
   logoHeaderRule: {
-    marginTop: 8,
+    marginTop: 10,
     marginHorizontal: 40,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
@@ -75,10 +75,10 @@ const s = StyleSheet.create({
     justifyContent: "center",
     padding: 4,
   },
-  companyName: { fontSize: 15, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "center", marginBottom: 3 },
-  addr: { fontSize: 8, color: GREY, textAlign: "center", lineHeight: 1.3 },
-  meta: { fontSize: 8, color: GREY, marginTop: 4, textAlign: "center" },
-  rule: { borderBottomWidth: 1.5, borderBottomColor: BRAND, marginTop: 10, marginBottom: 14 },
+  companyName: { fontSize: 14.5, fontFamily: "Helvetica-Bold", color: BRAND, textAlign: "center", marginBottom: 7, letterSpacing: 0.3 },
+  addr: { fontSize: 8.5, color: GREY, textAlign: "center", lineHeight: 1.5 },
+  meta: { fontSize: 8, color: GREY, marginTop: 7, textAlign: "center", lineHeight: 1.4 },
+  rule: { borderBottomWidth: 1.5, borderBottomColor: BRAND, marginTop: 13, marginBottom: 14 },
   titleRow: {
     position: "relative",
     justifyContent: "center",
@@ -208,9 +208,7 @@ function QuoteDocument({
 
         {/* Company text block */}
         <Text style={s.companyName}>{QUOTE_COMPANY.name}</Text>
-        {QUOTE_COMPANY.addressLines.map((l, i) => (
-          <Text key={i} style={s.addr}>{l}</Text>
-        ))}
+        <Text style={s.addr}>{QUOTE_COMPANY.addressLines.join("\n")}</Text>
         <Text style={s.meta}>
           GSTIN: {QUOTE_COMPANY.gstin}  |  Email: {QUOTE_COMPANY.email} (cc:{" "}
           {QUOTE_COMPANY.emailCc})  |  Phone: {QUOTE_COMPANY.phones.join(" | ")}
@@ -244,6 +242,7 @@ function QuoteDocument({
         ) : null}
 
         {/* Client info */}
+        <Text style={s.sectionHeading}>Quotation Details</Text>
         <View style={s.infoBox}>
           <View style={s.infoRow}>
             <Text style={s.infoLabel}>Client Name:</Text>
