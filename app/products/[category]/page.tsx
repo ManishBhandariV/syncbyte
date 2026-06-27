@@ -15,8 +15,8 @@ import {
 import { loadEffectiveCategories } from "@/lib/data/products-server";
 import { loadProductImagesMap } from "@/lib/data/product-images-server";
 
-// ISR: cache the category page; admin edits revalidate "/products" on save.
-export const revalidate = 3600;
+// Cache indefinitely — only rebuild on deploy or admin revalidatePath("/products").
+export const revalidate = false;
 
 // Prerender every static category at build so visitors hit cached HTML, not the
 // DB. Custom (DB-only) categories still render on demand (dynamicParams default).

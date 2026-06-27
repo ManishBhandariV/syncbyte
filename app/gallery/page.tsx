@@ -5,7 +5,10 @@ import { loadGalleryImages, loadGalleryVideos } from "@/lib/data/gallery-server"
 import { svgPlaceholder } from "@/lib/placeholder";
 
 export const metadata = { title: "Gallery" };
-export const revalidate = 3600;
+// Admin gallery edits call revalidatePath("/gallery") for instant updates.
+// A daily revalidate also lets auto-discovered YouTube (RSS) videos trickle in
+// without per-visit DB/API hits — one tiny refresh per day.
+export const revalidate = 86400;
 
 // Static fallback shown only if there are no DB rows and no project images uploaded.
 const FALLBACK_IMAGES = [

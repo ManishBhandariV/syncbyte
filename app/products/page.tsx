@@ -17,9 +17,8 @@ import {
   displayName,
 } from "@/lib/data/product-meta";
 
-// ISR: cache rendered output; admin edits revalidate "/products" on save.
-// The brand filter (searchParams) renders dynamically per query but is low-traffic.
-export const revalidate = 3600;
+// Cache indefinitely — only rebuild on deploy or admin revalidatePath("/products").
+export const revalidate = false;
 
 type SP = { brand?: string };
 

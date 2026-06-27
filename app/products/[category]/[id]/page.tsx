@@ -15,9 +15,9 @@ import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { getDb } from "@/lib/db";
 import type { ProductSpec, ProductDownload, ProductFeature } from "@/lib/db/types";
 
-// ISR: serve a cached page and only re-query the DB at most hourly. Admin edits
-// call revalidatePath("/products", "layout") so changes still appear instantly.
-export const revalidate = 3600;
+// Cache indefinitely — only rebuild on a new deploy or when an admin edit calls
+// revalidatePath("/products", "layout"). No idle/background DB hits.
+export const revalidate = false;
 
 // Prerender every static product at build so visitors hit cached HTML, not the
 // DB. Custom (DB-only) products still render on demand (dynamicParams default).

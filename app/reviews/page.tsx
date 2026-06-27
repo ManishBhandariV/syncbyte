@@ -4,7 +4,8 @@ import { ReviewForm } from "@/components/ReviewForm";
 import { loadApprovedReviews } from "@/lib/data/reviews-server";
 
 export const metadata = { title: "Customer Reviews" };
-export const revalidate = 60; // re-fetch approved reviews every minute
+// Cache indefinitely — admin approve/reject/delete calls revalidatePath("/reviews").
+export const revalidate = false;
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
