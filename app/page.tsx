@@ -106,7 +106,7 @@ export default async function HomePage() {
             {featuredItems.map((item) => (
               <div className="product-card" key={item.id}>
                 <div className="product-image">
-                  <img src={bestProductImage(item.id, meta, imagesMap)} alt={item.name} />
+                  <img src={bestProductImage(item.id, meta, imagesMap)} alt={item.name} loading="lazy" decoding="async" />
                   <div className="product-overlay">
                     <Link
                       href={getProductUrl(item.categorySlug, item.id)}

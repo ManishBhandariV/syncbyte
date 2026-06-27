@@ -256,7 +256,7 @@ export default async function ProductDetailPage({
               return (
               <div className="product-card product-card-compact" key={rp.id}>
                 <div className="product-image">
-                  <img src={bestProductImage(rp.id, meta, imagesMap)} alt={rpName} />
+                  <img src={bestProductImage(rp.id, meta, imagesMap)} alt={rpName} loading="lazy" decoding="async" />
                   <div className="product-overlay">
                     <Link
                       href={getProductUrl(categorySlug, rp.id)}

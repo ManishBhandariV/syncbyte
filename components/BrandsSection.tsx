@@ -28,7 +28,7 @@ export async function BrandsSection() {
                 title={`See all ${brand.name} products`}
               >
                 {logo ? (
-                  <img src={logo} alt={`${brand.name} logo`} />
+                  <img src={logo} alt={`${brand.name} logo`} loading="lazy" decoding="async" />
                 ) : (
                   <span className="brand-card-text">{brand.name}</span>
                 )}

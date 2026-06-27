@@ -69,7 +69,7 @@ export function CustomersCarousel({ logos }: { logos: string[] }) {
       >
         {all.map((logo, i) => (
           <div className="customer-logo" key={`${logo}-${i}`}>
-            <img src={logo} alt="Client logo" />
+            <img src={logo} alt="Client logo" loading="lazy" decoding="async" />
           </div>
         ))}
       </div>

@@ -109,6 +109,8 @@ export default async function SearchPage({
                                   imagesMap,
                                 )}
                                 alt={r.name}
+                                loading="lazy"
+                                decoding="async"
                               />
                               <div className="product-overlay">
                                 <Link href={r.url} className="btn btn-secondary">

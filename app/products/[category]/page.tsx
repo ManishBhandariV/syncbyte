@@ -109,7 +109,7 @@ export default async function CategoryPage({
                   return (
                   <div className="product-card" key={product.id}>
                     <div className="product-image">
-                      <img src={bestProductImage(product.id, meta, imagesMap)} alt={name} />
+                      <img src={bestProductImage(product.id, meta, imagesMap)} alt={name} loading="lazy" decoding="async" />
                       <div className="product-overlay">
                         <Link
                           href={getProductUrl(slug, product.id)}
