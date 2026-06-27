@@ -7,7 +7,9 @@ import { getDb } from "@/lib/db";
 import type { SiteDownload } from "@/lib/db/types";
 
 export const metadata = { title: "Downloads" };
-export const dynamic = "force-dynamic";
+// ISR: cache the page; all four admin download mutations call
+// revalidatePath("/downloads"), so new/edited files appear immediately.
+export const revalidate = 3600;
 
 async function loadDbDownloads(): Promise<DownloadFile[]> {
   try {

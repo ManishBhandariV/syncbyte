@@ -17,6 +17,10 @@ import {
   displayName,
 } from "@/lib/data/product-meta";
 
+// ISR: cache rendered output; admin edits revalidate "/products" on save.
+// The brand filter (searchParams) renders dynamically per query but is low-traffic.
+export const revalidate = 3600;
+
 type SP = { brand?: string };
 
 export async function generateMetadata({

@@ -5,6 +5,7 @@ import {
   findProductIn,
   getCategoryUrl,
   getProductUrl,
+  productCategories,
 } from "@/lib/data/products";
 import { loadProductMeta, bestProductImage, displayName } from "@/lib/data/product-meta";
 import { loadEffectiveCategories } from "@/lib/data/products-server";
@@ -13,6 +14,18 @@ import { ProductTabs } from "@/components/ProductTabs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { getDb } from "@/lib/db";
 import type { ProductSpec, ProductDownload, ProductFeature } from "@/lib/db/types";
+
+// ISR: serve a cached page and only re-query the DB at most hourly. Admin edits
+// call revalidatePath("/products", "layout") so changes still appear instantly.
+export const revalidate = 3600;
+
+// Prerender every static product at build so visitors hit cached HTML, not the
+// DB. Custom (DB-only) products still render on demand (dynamicParams default).
+export function generateStaticParams() {
+  return Object.entries(productCategories).flatMap(([category, cat]) =>
+    cat.products.map((p) => ({ category, id: p.id })),
+  );
+}
 
 type Params = { category: string; id: string };
 
