@@ -48,6 +48,7 @@ const s = StyleSheet.create({
   bullet: { flexDirection: "row", marginBottom: 2 },
   bulletDot: { width: 10, fontSize: 8.5, color: ACCENT },
   bulletText: { flex: 1, fontSize: 8.5, color: "#334155" },
+  orderLine: { fontSize: 8.5, color: "#334155", lineHeight: 1.4, marginBottom: 1 },
   // customer wall
   customerWall: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 4 },
   customerCell: { width: 92, height: 40, backgroundColor: "#fff", borderWidth: 0.5, borderColor: "#eef2f7", borderRadius: 4, alignItems: "center", justifyContent: "center", padding: 4 },
@@ -297,7 +298,7 @@ function SmartDocument({
         <Text style={s.heading}>{so.orderPlacement.heading}</Text>
         <Text style={s.para}>{so.orderPlacement.intro}</Text>
         {so.orderPlacement.lines.map((l, i) => (
-          <Text key={i} style={[s.bulletText, { marginBottom: 1 }]}>{l}</Text>
+          <Text key={i} style={s.orderLine}>{l}</Text>
         ))}
 
         {/* Bank */}
