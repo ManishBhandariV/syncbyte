@@ -180,10 +180,10 @@ function SmartDocument({
         <View style={s.th}>
           <Text style={s.cSl}>Sl.</Text>
           <Text style={s.cDesc}>Description</Text>
-          <Text style={s.cNum}>Per Emp. (₹)</Text>
+          <Text style={s.cNum}>Per Emp. (INR)</Text>
           <Text style={s.cMonths}>Months</Text>
           <Text style={s.cCount}>Emp. Count</Text>
-          <Text style={s.cTotal}>Total (₹)</Text>
+          <Text style={s.cTotal}>Amount (INR)</Text>
         </View>
         {lines.map((l, i) => (
           <View key={i} style={s.tr} wrap={false}>
@@ -228,7 +228,7 @@ function SmartDocument({
         {q.notes ? <Text style={s.para}>{q.notes}</Text> : null}
 
         {/* Feature matrix */}
-        <Text style={s.heading} break>{so.featureMatrixHeading}</Text>
+        <Text style={s.heading}>{so.featureMatrixHeading}</Text>
         <View style={s.matrix}>
           {so.featureColumns.map((col, ci) => (
             <View key={ci} style={s.matrixCol}>
@@ -249,7 +249,7 @@ function SmartDocument({
         </View>
 
         {/* Terms */}
-        <Text style={s.heading} break>Terms &amp; Conditions</Text>
+        <Text style={s.heading}>Terms &amp; Conditions</Text>
         {so.termsSections.map((sec, si) => (
           <View key={si} wrap={false}>
             <Text style={s.termHeading}>{sec.heading}</Text>
