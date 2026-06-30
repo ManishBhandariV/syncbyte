@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   items TEXT NOT NULL DEFAULT '[]',
   notes TEXT NOT NULL DEFAULT '',
   version INTEGER NOT NULL DEFAULT 1,
+  template TEXT NOT NULL DEFAULT 'business',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -211,6 +212,7 @@ const MIGRATIONS = [
   "ALTER TABLE contact_enquiries ADD COLUMN email_sent INTEGER DEFAULT 0",
   "ALTER TABLE contact_enquiries ADD COLUMN email_error TEXT",
   "ALTER TABLE quotes ADD COLUMN version INTEGER NOT NULL DEFAULT 1",
+  "ALTER TABLE quotes ADD COLUMN template TEXT NOT NULL DEFAULT 'business'",
 ];
 
 export const sqliteDriver: DbDriver = {

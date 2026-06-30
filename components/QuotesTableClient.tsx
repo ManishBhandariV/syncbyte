@@ -13,6 +13,7 @@ export type QuoteRowView = {
   location: string;
   date: string; // ISO yyyy-mm-dd
   total: number;
+  template: "business" | "smart_office";
 };
 
 type SortKey = "quote" | "client" | "date" | "total";
@@ -120,6 +121,19 @@ export function QuotesTableClient({ quotes }: { quotes: QuoteRowView[] }) {
                 <td style={{ padding: "10px 12px" }}>
                   {q.client}
                   {q.location ? <span style={{ color: "#94a3b8" }}> · {q.location}</span> : null}
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: "0.62rem",
+                      fontWeight: 700,
+                      padding: "1px 7px",
+                      borderRadius: 10,
+                      background: q.template === "smart_office" ? "#e0f2fe" : "#f1f5f9",
+                      color: q.template === "smart_office" ? "#0369a1" : "#64748b",
+                    }}
+                  >
+                    {q.template === "smart_office" ? "SMART OFFICE" : "BUSINESS"}
+                  </span>
                 </td>
                 <td style={{ padding: "10px 12px", color: "#475569" }}>{prettyDate(q.date)}</td>
                 <td style={{ padding: "10px 12px", fontWeight: 600 }}>₹ {formatINR(q.total)}</td>

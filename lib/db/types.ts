@@ -182,6 +182,7 @@ export type QuoteRow = {
   items: string;
   notes: string;
   version: number;
+  template: string; // "business" | "smart_office"
   created_at: string;
   updated_at: string;
 };

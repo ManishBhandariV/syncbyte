@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { listQuotes } from "@/lib/data/quotes-server";
-import { computeTotals } from "@/lib/data/quotes";
+import { computeTotals, computeSmartTotals } from "@/lib/data/quotes";
 import { AdminTopBar } from "@/components/AdminTopBar";
 import { QuotesTableClient, type QuoteRowView } from "@/components/QuotesTableClient";
 
@@ -21,7 +21,11 @@ export default async function AdminQuotesPage() {
     client: q.client_name,
     location: q.client_location,
     date: q.quote_date,
-    total: computeTotals(q.items, q.gst_percent).totalAmount,
+    template: q.template,
+    total:
+      q.template === "smart_office"
+        ? computeSmartTotals(q.smartItems, q.gst_percent).totalAmount
+        : computeTotals(q.items, q.gst_percent).totalAmount,
   }));
 
   return (

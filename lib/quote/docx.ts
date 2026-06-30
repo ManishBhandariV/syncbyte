@@ -97,6 +97,10 @@ function cell(
 }
 
 export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
+  if (q.template === "smart_office") {
+    const { renderSmartQuoteDocx } = await import("@/lib/quote/docx-smart");
+    return renderSmartQuoteDocx(q);
+  }
   const { lines, netAmount, gstAmount, totalAmount } = computeTotals(
     q.items,
     q.gst_percent,

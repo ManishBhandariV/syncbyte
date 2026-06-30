@@ -4,10 +4,41 @@
  * generator all use computeTotals() so the numbers can never diverge.
  */
 
+/** Which quote template a quote is built with. Chosen at creation, then locked. */
+export type QuoteTemplate = "business" | "smart_office";
+
+export const QUOTE_TEMPLATES: Array<{ id: QuoteTemplate; name: string; blurb: string }> = [
+  {
+    id: "business",
+    name: "Business Proposal & Quotation",
+    blurb: "General hardware/solution quote — Qty × Unit Price line items, About, Esteemed Customers, standard Terms & bank details.",
+  },
+  {
+    id: "smart_office",
+    name: "Smart Office Cloud Attendance & Payroll",
+    blurb: "SaaS subscription quote — per-employee pricing, cloud benefits, full feature matrix, SLA & escalation matrix, detailed terms.",
+  },
+];
+
+/** Business-template line item: simple quantity × unit price. */
 export type QuoteItem = {
   description: string;
   qty: number;
   unit_price: number;
+};
+
+/**
+ * Smart Office line item: per-employee SaaS pricing.
+ *  - subscription rows: total = per_employee_price × months × employee_count
+ *  - one-time rows (e.g. setup): total = per_employee_price × employee_count
+ *    (months shown as "—")
+ */
+export type SmartItem = {
+  description: string;
+  per_employee_price: number;
+  months: number;
+  employee_count: number;
+  one_time: boolean;
 };
 
 export type QuoteInput = {
@@ -20,8 +51,10 @@ export type QuoteInput = {
   scope_of_work: string;
   gst_percent: number;
   items: QuoteItem[];
+  smartItems: SmartItem[];
   notes: string;
   version: number;
+  template: QuoteTemplate;
 };
 
 /**
@@ -68,7 +101,7 @@ export function formatINR(n: number): string {
   }).format(Number(n) || 0);
 }
 
-/** Parse the JSON `items` column into a typed array, tolerating bad data. */
+/** Parse the JSON `items` column into business line items, tolerating bad data. */
 export function parseItems(raw: string): QuoteItem[] {
   try {
     const arr = JSON.parse(raw);
@@ -78,6 +111,51 @@ export function parseItems(raw: string): QuoteItem[] {
         description: String(x.description ?? ""),
         qty: Number(x.qty) || 0,
         unit_price: Number(x.unit_price) || 0,
+      }))
+      .filter((x) => x.description.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/** Per-row total for a Smart Office line item. */
+export function smartLineTotal(it: SmartItem): number {
+  const price = Number(it.per_employee_price) || 0;
+  const count = Number(it.employee_count) || 0;
+  const months = it.one_time ? 1 : Number(it.months) || 0;
+  return round2(price * months * count);
+}
+
+export type SmartTotals = {
+  lines: Array<SmartItem & { total: number }>;
+  netAmount: number;
+  gstAmount: number;
+  totalAmount: number;
+};
+
+export function computeSmartTotals(
+  items: SmartItem[],
+  gstPercent: number,
+): SmartTotals {
+  const lines = items.map((it) => ({ ...it, total: smartLineTotal(it) }));
+  const netAmount = round2(lines.reduce((s, l) => s + l.total, 0));
+  const gstAmount = round2((netAmount * (Number(gstPercent) || 0)) / 100);
+  const totalAmount = round2(netAmount + gstAmount);
+  return { lines, netAmount, gstAmount, totalAmount };
+}
+
+/** Parse the JSON `items` column into Smart Office line items. */
+export function parseSmartItems(raw: string): SmartItem[] {
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((x) => ({
+        description: String(x.description ?? ""),
+        per_employee_price: Number(x.per_employee_price) || 0,
+        months: Number(x.months) || 0,
+        employee_count: Number(x.employee_count) || 0,
+        one_time: Boolean(x.one_time),
       }))
       .filter((x) => x.description.trim().length > 0);
   } catch {

@@ -341,8 +341,12 @@ function QuoteDocument({
   );
 }
 
-/** Render a quote to a PDF Buffer (Node). */
+/** Render a quote to a PDF Buffer (Node). Branches on the quote's template. */
 export async function renderQuotePdf(q: QuoteInput): Promise<Buffer> {
+  if (q.template === "smart_office") {
+    const { renderSmartQuotePdf } = await import("@/lib/quote/pdf-smart");
+    return renderSmartQuotePdf(q);
+  }
   const logo = loadHeaderLogo();
   const customers = loadCustomerLogos();
   return renderToBuffer(

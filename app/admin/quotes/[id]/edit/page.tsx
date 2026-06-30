@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { AdminTopBar } from "@/components/AdminTopBar";
 import { QuoteForm } from "@/components/QuoteForm";
+import { SmartQuoteForm } from "@/components/SmartQuoteForm";
 import { getQuote } from "@/lib/data/quotes-server";
 
 export const metadata = { title: "Admin · Edit Quote" };
@@ -26,23 +27,43 @@ export default async function EditQuotePage({
     <div style={{ background: "#f0f4f8", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif" }}>
       <AdminTopBar title={`Quote ${quote.quote_number}`} username={session.username} activeTab="quotes" />
       <div style={{ padding: 28, maxWidth: 1000, margin: "0 auto" }}>
-        <QuoteForm
-          id={quote.id}
-          quoteNumber={quote.quote_number}
-          version={quote.version}
-          justCreated={created === "1"}
-          defaults={{
-            client_name: quote.client_name,
-            client_location: quote.client_location,
-            client_contact: quote.client_contact,
-            quote_date: quote.quote_date,
-            validity: quote.validity,
-            scope_of_work: quote.scope_of_work,
-            gst_percent: quote.gst_percent,
-            notes: quote.notes,
-            items: quote.items,
-          }}
-        />
+        {quote.template === "smart_office" ? (
+          <SmartQuoteForm
+            id={quote.id}
+            quoteNumber={quote.quote_number}
+            version={quote.version}
+            justCreated={created === "1"}
+            defaults={{
+              client_name: quote.client_name,
+              client_location: quote.client_location,
+              client_contact: quote.client_contact,
+              quote_date: quote.quote_date,
+              validity: quote.validity,
+              scope_of_work: quote.scope_of_work,
+              gst_percent: quote.gst_percent,
+              notes: quote.notes,
+              smartItems: quote.smartItems,
+            }}
+          />
+        ) : (
+          <QuoteForm
+            id={quote.id}
+            quoteNumber={quote.quote_number}
+            version={quote.version}
+            justCreated={created === "1"}
+            defaults={{
+              client_name: quote.client_name,
+              client_location: quote.client_location,
+              client_contact: quote.client_contact,
+              quote_date: quote.quote_date,
+              validity: quote.validity,
+              scope_of_work: quote.scope_of_work,
+              gst_percent: quote.gst_percent,
+              notes: quote.notes,
+              items: quote.items,
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -202,10 +202,12 @@ const SCHEMA_STATEMENTS = [
     items           TEXT NOT NULL DEFAULT '[]',
     notes           TEXT NOT NULL DEFAULT '',
     version         INTEGER NOT NULL DEFAULT 1,
+    template        TEXT NOT NULL DEFAULT 'business',
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
   )`,
   `ALTER TABLE quotes ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE quotes ADD COLUMN IF NOT EXISTS template TEXT NOT NULL DEFAULT 'business'`,
 ];
 
 // Tables without an `id` column — skip the auto-appended RETURNING id.

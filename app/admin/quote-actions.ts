@@ -5,12 +5,19 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { nextQuoteNumber, getQuote, type Quote } from "@/lib/data/quotes-server";
-import { parseItems, type QuoteItem } from "@/lib/data/quotes";
+import { parseItems, parseSmartItems, type QuoteTemplate } from "@/lib/data/quotes";
 
 export type QuoteActionResult = { ok: boolean; message: string };
 
-function sanitizeItems(raw: string): QuoteItem[] {
-  return parseItems(raw); // already validates + drops blank-description rows
+/** Normalize the items JSON for whichever template (drops blank rows). */
+function sanitizeItemsJson(raw: string, template: QuoteTemplate): string {
+  return template === "smart_office"
+    ? JSON.stringify(parseSmartItems(raw))
+    : JSON.stringify(parseItems(raw));
+}
+
+function itemCount(raw: string, template: QuoteTemplate): number {
+  return template === "smart_office" ? parseSmartItems(raw).length : parseItems(raw).length;
 }
 
 /** True if the incoming form data differs from the stored quote's content. */
@@ -22,6 +29,10 @@ function contentChanged(
     gstPercent: number; notes: string; itemsJson: string;
   },
 ): boolean {
+  const existingItemsJson =
+    existing.template === "smart_office"
+      ? JSON.stringify(existing.smartItems)
+      : JSON.stringify(existing.items);
   return (
     existing.client_name !== next.clientName ||
     existing.client_location !== next.clientLocation ||
@@ -31,7 +42,7 @@ function contentChanged(
     existing.scope_of_work !== next.scope ||
     Number(existing.gst_percent) !== Number(next.gstPercent) ||
     existing.notes !== next.notes ||
-    JSON.stringify(existing.items) !== next.itemsJson
+    existingItemsJson !== next.itemsJson
   );
 }
 
@@ -56,23 +67,29 @@ export async function saveQuote(
   const scope = String(formData.get("scope_of_work") ?? "").trim();
   const gstPercent = Number(formData.get("gst_percent") ?? 18);
   const notes = String(formData.get("notes") ?? "").trim();
-  const items = sanitizeItems(String(formData.get("items") ?? "[]"));
+
+  // Template is chosen at creation and locked thereafter. For updates we trust
+  // the stored template, not the form, so it can never be switched.
+  const existing = id > 0 ? await getQuote(id) : null;
+  const formTemplate: QuoteTemplate =
+    String(formData.get("template") ?? "") === "smart_office" ? "smart_office" : "business";
+  const template: QuoteTemplate = existing ? existing.template : formTemplate;
+
+  const itemsJson = sanitizeItemsJson(String(formData.get("items") ?? "[]"), template);
 
   if (!clientName) return { ok: false, message: "Client name is required." };
   if (!quoteDate) return { ok: false, message: "Quote date is required." };
-  if (items.length === 0)
+  if (itemCount(itemsJson, template) === 0)
     return { ok: false, message: "Add at least one line item." };
   if (!Number.isFinite(gstPercent) || gstPercent < 0 || gstPercent > 100)
     return { ok: false, message: "GST % must be between 0 and 100." };
 
   const db = await getDb();
-  const itemsJson = JSON.stringify(items);
 
   try {
     if (id > 0) {
       // Bump the revision only when the content actually changed, so repeated
       // saves / auto-saves-before-download don't inflate the version.
-      const existing = await getQuote(id);
       const nextVersion = existing
         ? contentChanged(existing, {
             clientName, clientLocation, clientContact, quoteDate,
@@ -102,9 +119,9 @@ export async function saveQuote(
     const quoteNumber = await nextQuoteNumber(year);
     const result = await db.run(
       `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
-         quote_date, validity, scope_of_work, gst_percent, items, notes, version)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-      [quoteNumber, clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes],
+         quote_date, validity, scope_of_work, gst_percent, items, notes, version, template)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [quoteNumber, clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes, template],
     );
     revalidatePath("/admin/quotes");
     const newId = result.insertId;
@@ -143,10 +160,14 @@ export async function duplicateQuote(formData: FormData): Promise<void> {
   const year =
     Number(src.quote_date.slice(0, 4)) || new Date().getFullYear();
   const quoteNumber = await nextQuoteNumber(year);
+  const srcItemsJson =
+    src.template === "smart_office"
+      ? JSON.stringify(src.smartItems)
+      : JSON.stringify(src.items);
   const result = await db.run(
     `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
-       quote_date, validity, scope_of_work, gst_percent, items, notes, version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+       quote_date, validity, scope_of_work, gst_percent, items, notes, version, template)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
     [
       quoteNumber,
       `${src.client_name} (copy)`,
@@ -156,8 +177,9 @@ export async function duplicateQuote(formData: FormData): Promise<void> {
       src.validity,
       src.scope_of_work,
       src.gst_percent,
-      JSON.stringify(src.items),
+      srcItemsJson,
       src.notes,
+      src.template,
     ],
   );
   revalidatePath("/admin/quotes");

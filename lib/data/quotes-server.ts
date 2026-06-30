@@ -1,16 +1,34 @@
 import "server-only";
 import { getDb } from "@/lib/db";
 import type { QuoteRow } from "@/lib/db/types";
-import { parseItems, type QuoteInput } from "@/lib/data/quotes";
+import {
+  parseItems,
+  parseSmartItems,
+  type QuoteInput,
+  type QuoteItem,
+  type SmartItem,
+  type QuoteTemplate,
+} from "@/lib/data/quotes";
 import { QUOTE_NUMBER } from "@/lib/data/quote-config";
 
-/** A quote row with `items` already parsed into a typed array. */
-export type Quote = Omit<QuoteRow, "items"> & {
-  items: ReturnType<typeof parseItems>;
+/**
+ * A hydrated quote. Both item shapes are parsed; which one is meaningful
+ * depends on `template` ("business" uses items, "smart_office" uses smartItems).
+ */
+export type Quote = Omit<QuoteRow, "items" | "template"> & {
+  template: QuoteTemplate;
+  items: QuoteItem[];
+  smartItems: SmartItem[];
 };
 
 function hydrate(row: QuoteRow): Quote {
-  return { ...row, items: parseItems(row.items) };
+  const template: QuoteTemplate = row.template === "smart_office" ? "smart_office" : "business";
+  return {
+    ...row,
+    template,
+    items: template === "business" ? parseItems(row.items) : [],
+    smartItems: template === "smart_office" ? parseSmartItems(row.items) : [],
+  };
 }
 
 export async function listQuotes(): Promise<Quote[]> {
@@ -69,7 +87,9 @@ export function toInput(q: Quote): QuoteInput {
     scope_of_work: q.scope_of_work,
     gst_percent: q.gst_percent,
     items: q.items,
+    smartItems: q.smartItems,
     notes: q.notes,
     version: q.version,
+    template: q.template,
   };
 }
