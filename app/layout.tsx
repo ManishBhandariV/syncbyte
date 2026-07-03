@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: `%s - ${siteConfig.companyName}`,
   },
   description: siteConfig.siteDescription,
-  // Favicon is auto-served by app/icon.tsx (Next.js App Router convention).
+  // Favicon is the Syncbyte "SB" mark at app/favicon.ico (App Router auto-serves it).
 };
 
 export const viewport: Viewport = {
