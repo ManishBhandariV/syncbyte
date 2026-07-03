@@ -61,15 +61,20 @@ export const QUOTE_DEFAULTS = {
 } as const;
 
 /**
- * Quote-number scheme: SB-{year}-{seq}. The sequence resets every calendar
- * year and is zero-padded to `pad` digits. `yearSeed[year]` is the last number
- * considered "already used", so the next quote for that year is seed + 1 — this
- * lets us continue an existing external sequence (2026 resumes at 2241).
+ * Quote-number scheme: SB-{year}-{seq}, e.g. SB-2026-0460. The sequence resets
+ * each calendar year and is zero-padded to `pad` digits.
+ *
+ *  - `yearSeed[year]` is the last number considered "already used", so the next
+ *    quote for that year is seed + 1 (2026 → 0460).
+ *  - `yearIgnoreAtOrAbove[year]` excludes legacy quote numbers at/above the
+ *    given value when finding the current max — used to start a fresh series
+ *    (0460) while keeping older test quotes (numbered 2241+) in the system.
  */
 export const QUOTE_NUMBER = {
   prefix: "SB",
-  pad: 5,
-  yearSeed: { 2026: 2240 } as Record<number, number>,
+  pad: 4,
+  yearSeed: { 2026: 459 } as Record<number, number>,
+  yearIgnoreAtOrAbove: { 2026: 2241 } as Record<number, number>,
 } as const;
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -2,23 +2,24 @@ import "server-only";
 import { getDb } from "@/lib/db";
 import type { QuoteRow } from "@/lib/db/types";
 import {
-  parseItems,
-  parseSmartItems,
+  parseBusinessOptions,
+  parseSmartOptions,
   type QuoteInput,
-  type QuoteItem,
-  type SmartItem,
+  type BusinessOption,
+  type SmartOption,
   type QuoteTemplate,
 } from "@/lib/data/quotes";
 import { QUOTE_NUMBER } from "@/lib/data/quote-config";
 
 /**
- * A hydrated quote. Both item shapes are parsed; which one is meaningful
- * depends on `template` ("business" uses items, "smart_office" uses smartItems).
+ * A hydrated quote. Options are parsed per template ("business" uses options,
+ * "smart_office" uses smartOptions). Legacy flat item arrays become a single
+ * untitled option.
  */
 export type Quote = Omit<QuoteRow, "items" | "template"> & {
   template: QuoteTemplate;
-  items: QuoteItem[];
-  smartItems: SmartItem[];
+  options: BusinessOption[];
+  smartOptions: SmartOption[];
 };
 
 function hydrate(row: QuoteRow): Quote {
@@ -26,8 +27,8 @@ function hydrate(row: QuoteRow): Quote {
   return {
     ...row,
     template,
-    items: template === "business" ? parseItems(row.items) : [],
-    smartItems: template === "smart_office" ? parseSmartItems(row.items) : [],
+    options: template === "business" ? parseBusinessOptions(row.items) : [],
+    smartOptions: template === "smart_office" ? parseSmartOptions(row.items) : [],
   };
 }
 
@@ -67,10 +68,14 @@ export async function nextQuoteNumber(year: number): Promise<string> {
     "SELECT quote_number FROM quotes WHERE quote_number LIKE ?",
     [`${prefix}%`],
   );
+  const ignoreAtOrAbove = QUOTE_NUMBER.yearIgnoreAtOrAbove[year];
   let max = QUOTE_NUMBER.yearSeed[year] ?? 0;
   for (const r of rows) {
     const n = parseInt(r.quote_number.slice(prefix.length), 10);
-    if (Number.isFinite(n) && n > max) max = n;
+    if (!Number.isFinite(n)) continue;
+    // Skip legacy/test numbers so a fresh series can start below them.
+    if (ignoreAtOrAbove !== undefined && n >= ignoreAtOrAbove) continue;
+    if (n > max) max = n;
   }
   return `${prefix}${String(max + 1).padStart(QUOTE_NUMBER.pad, "0")}`;
 }
@@ -86,8 +91,8 @@ export function toInput(q: Quote): QuoteInput {
     validity: q.validity,
     scope_of_work: q.scope_of_work,
     gst_percent: q.gst_percent,
-    items: q.items,
-    smartItems: q.smartItems,
+    options: q.options,
+    smartOptions: q.smartOptions,
     notes: q.notes,
     version: q.version,
     template: q.template,

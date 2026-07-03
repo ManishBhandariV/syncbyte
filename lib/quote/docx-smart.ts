@@ -84,7 +84,8 @@ function cell(
 
 export async function renderSmartQuoteDocx(q: QuoteInput): Promise<Buffer> {
   const so = SMART_OFFICE;
-  const { lines, netAmount, gstAmount, totalAmount } = computeSmartTotals(q.smartItems, q.gst_percent);
+  const options = q.smartOptions.length > 0 ? q.smartOptions : [{ title: "", smartItems: [] }];
+  const multi = options.length > 1;
 
   const logo = loadHeaderLogo();
   const runningHeader = logo
@@ -159,37 +160,50 @@ export async function renderSmartQuoteDocx(q: QuoteInput): Promise<Buffer> {
     }),
   );
 
-  // Pricing
-  body.push(heading(so.pricingHeading));
-  const priceHeader = new TableRow({
-    tableHeader: true,
-    children: [
-      cell("Sl.", { width: 6, bold: true, color: WHITE, fill: BRAND }),
-      cell("Description", { width: 40, bold: true, color: WHITE, fill: BRAND }),
-      cell("Per Emp. (₹)", { width: 16, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-      cell("Months", { width: 12, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-      cell("Emp. Count", { width: 12, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-      cell("Total (₹)", { width: 14, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-    ],
-  });
-  const priceRows = lines.map((l, i) =>
-    new TableRow({
+  // Pricing — one table per option
+  body.push(heading(multi ? `${so.pricingHeading} — Options` : so.pricingHeading));
+  options.forEach((opt, oi) => {
+    const { lines, netAmount, gstAmount, totalAmount } = computeSmartTotals(opt.smartItems, q.gst_percent);
+    const label = opt.title.trim() || `Option ${oi + 1}`;
+    if (multi || opt.title.trim()) {
+      body.push(
+        new Paragraph({
+          spacing: { before: 160, after: 60 },
+          shading: { fill: ACCENT, color: "auto" },
+          children: [new TextRun({ text: `  ${label}`, bold: true, size: 18, color: WHITE })],
+        }),
+      );
+    }
+    const priceHeader = new TableRow({
+      tableHeader: true,
       children: [
-        cell(String(i + 1), { width: 6 }),
-        cell(l.description, { width: 40 }),
-        cell(formatINR(l.per_employee_price), { width: 16, align: AlignmentType.RIGHT }),
-        cell(l.one_time ? "—" : String(l.months), { width: 12, align: AlignmentType.RIGHT }),
-        cell(String(l.employee_count), { width: 12, align: AlignmentType.RIGHT }),
-        cell(formatINR(l.total), { width: 14, align: AlignmentType.RIGHT }),
+        cell("Sl.", { width: 6, bold: true, color: WHITE, fill: BRAND }),
+        cell("Description", { width: 40, bold: true, color: WHITE, fill: BRAND }),
+        cell("Per Emp. (INR)", { width: 16, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
+        cell("Months", { width: 12, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
+        cell("Emp. Count", { width: 12, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
+        cell("Amount (INR)", { width: 14, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
       ],
-    }),
-  );
-  const priceTotals = [
-    new TableRow({ children: [cell("Total", { width: 86, bold: true, color: GREY, align: AlignmentType.RIGHT }), cell(formatINR(netAmount), { width: 14, bold: true, align: AlignmentType.RIGHT })] }),
-    new TableRow({ children: [cell(`GST @ ${q.gst_percent}%`, { width: 86, bold: true, color: GREY, align: AlignmentType.RIGHT }), cell(formatINR(gstAmount), { width: 14, bold: true, align: AlignmentType.RIGHT })] }),
-    new TableRow({ children: [cell("Total Amount", { width: 86, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }), cell(formatINR(totalAmount), { width: 14, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT })] }),
-  ];
-  body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: THIN, bottom: THIN, left: THIN, right: THIN, insideHorizontal: THIN, insideVertical: THIN }, rows: [priceHeader, ...priceRows, ...priceTotals] }));
+    });
+    const priceRows = lines.map((l, i) =>
+      new TableRow({
+        children: [
+          cell(String(i + 1), { width: 6 }),
+          cell(l.description, { width: 40 }),
+          cell(formatINR(l.per_employee_price), { width: 16, align: AlignmentType.RIGHT }),
+          cell(l.one_time ? "—" : String(l.months), { width: 12, align: AlignmentType.RIGHT }),
+          cell(String(l.employee_count), { width: 12, align: AlignmentType.RIGHT }),
+          cell(formatINR(l.total), { width: 14, align: AlignmentType.RIGHT }),
+        ],
+      }),
+    );
+    const priceTotals = [
+      new TableRow({ children: [cell("Total", { width: 86, bold: true, color: GREY, align: AlignmentType.RIGHT }), cell(formatINR(netAmount), { width: 14, bold: true, align: AlignmentType.RIGHT })] }),
+      new TableRow({ children: [cell(`GST @ ${q.gst_percent}%`, { width: 86, bold: true, color: GREY, align: AlignmentType.RIGHT }), cell(formatINR(gstAmount), { width: 14, bold: true, align: AlignmentType.RIGHT })] }),
+      new TableRow({ children: [cell("Total Amount", { width: 86, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }), cell(formatINR(totalAmount), { width: 14, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT })] }),
+    ];
+    body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: THIN, bottom: THIN, left: THIN, right: THIN, insideHorizontal: THIN, insideVertical: THIN }, rows: [priceHeader, ...priceRows, ...priceTotals] }));
+  });
   so.pricingNotes.forEach((n) => body.push(bullet(n)));
 
   // Cloud benefits

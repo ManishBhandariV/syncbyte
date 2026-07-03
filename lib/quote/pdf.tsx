@@ -101,6 +101,17 @@ const s = StyleSheet.create({
     marginTop: 16,
     marginBottom: 6,
   },
+  optionHeading: {
+    fontSize: 9.5,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+    backgroundColor: ACCENT,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 3,
+    marginTop: 6,
+    marginBottom: 4,
+  },
   para: { fontSize: 8.5, color: "#334155", marginBottom: 5, textAlign: "justify" },
   // client info grid
   infoBox: { backgroundColor: LIGHT, borderRadius: 4, padding: 10, marginTop: 6 },
@@ -186,10 +197,8 @@ function QuoteDocument({
   logo: LoadedImage | null;
   customers: LoadedImage[];
 }) {
-  const { lines, netAmount, gstAmount, totalAmount } = computeTotals(
-    q.items,
-    q.gst_percent,
-  );
+  const options = q.options.length > 0 ? q.options : [{ title: "", items: [] }];
+  const multi = options.length > 1;
   const docId = fullQuoteId(q.quote_number, q.version);
   return (
     <Document
@@ -271,36 +280,49 @@ function QuoteDocument({
           </>
         ) : null}
 
-        {/* Commercial estimate */}
-        <Text style={s.sectionHeading}>Commercial Estimate</Text>
-        <View style={s.th}>
-          <Text style={s.cNum}>#</Text>
-          <Text style={s.cDesc}>Item Description</Text>
-          <Text style={s.cQty}>Qty</Text>
-          <Text style={s.cPrice}>Price / Unit (INR)</Text>
-          <Text style={s.cAmt}>Amount (INR)</Text>
-        </View>
-        {lines.map((l, i) => (
-          <View key={i} style={s.tr} wrap={false}>
-            <Text style={s.cNum}>{i + 1}</Text>
-            <Text style={s.cDesc}>{l.description}</Text>
-            <Text style={s.cQty}>{l.qty}</Text>
-            <Text style={s.cPrice}>{formatINR(l.unit_price)}</Text>
-            <Text style={s.cAmt}>{formatINR(l.amount)}</Text>
-          </View>
-        ))}
-        <View style={s.totalRow}>
-          <Text style={s.totalLabel}>Net Amount</Text>
-          <Text style={s.totalVal}>{formatINR(netAmount)}</Text>
-        </View>
-        <View style={s.totalRow}>
-          <Text style={s.totalLabel}>GST ({q.gst_percent}%)</Text>
-          <Text style={s.totalVal}>{formatINR(gstAmount)}</Text>
-        </View>
-        <View style={s.grandRow}>
-          <Text style={s.grandLabel}>Total Amount (Inclusive of Tax)</Text>
-          <Text style={s.grandVal}>{formatINR(totalAmount)}</Text>
-        </View>
+        {/* Commercial estimate — one block per option */}
+        <Text style={s.sectionHeading}>
+          {multi ? "Commercial Estimate — Options" : "Commercial Estimate"}
+        </Text>
+        {options.map((opt, oi) => {
+          const { lines, netAmount, gstAmount, totalAmount } = computeTotals(opt.items, q.gst_percent);
+          const label = opt.title.trim() || `Option ${oi + 1}`;
+          return (
+            <View key={oi} style={{ marginBottom: multi ? 12 : 0 }}>
+              {(multi || opt.title.trim()) && (
+                <Text style={s.optionHeading}>{label}</Text>
+              )}
+              <View style={s.th}>
+                <Text style={s.cNum}>#</Text>
+                <Text style={s.cDesc}>Item Description</Text>
+                <Text style={s.cQty}>Qty</Text>
+                <Text style={s.cPrice}>Price / Unit (INR)</Text>
+                <Text style={s.cAmt}>Amount (INR)</Text>
+              </View>
+              {lines.map((l, i) => (
+                <View key={i} style={s.tr} wrap={false}>
+                  <Text style={s.cNum}>{i + 1}</Text>
+                  <Text style={s.cDesc}>{l.description}</Text>
+                  <Text style={s.cQty}>{l.qty}</Text>
+                  <Text style={s.cPrice}>{formatINR(l.unit_price)}</Text>
+                  <Text style={s.cAmt}>{formatINR(l.amount)}</Text>
+                </View>
+              ))}
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>Net Amount</Text>
+                <Text style={s.totalVal}>{formatINR(netAmount)}</Text>
+              </View>
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>GST ({q.gst_percent}%)</Text>
+                <Text style={s.totalVal}>{formatINR(gstAmount)}</Text>
+              </View>
+              <View style={s.grandRow}>
+                <Text style={s.grandLabel}>Total Amount (Inclusive of Tax)</Text>
+                <Text style={s.grandVal}>{formatINR(totalAmount)}</Text>
+              </View>
+            </View>
+          );
+        })}
 
         {q.notes ? (
           <>

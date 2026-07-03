@@ -5,19 +5,22 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { nextQuoteNumber, getQuote, type Quote } from "@/lib/data/quotes-server";
-import { parseItems, parseSmartItems, type QuoteTemplate } from "@/lib/data/quotes";
+import { parseBusinessOptions, parseSmartOptions, type QuoteTemplate } from "@/lib/data/quotes";
 
 export type QuoteActionResult = { ok: boolean; message: string };
 
-/** Normalize the items JSON for whichever template (drops blank rows). */
+/** Normalize the options JSON for whichever template (drops blank rows/options). */
 function sanitizeItemsJson(raw: string, template: QuoteTemplate): string {
   return template === "smart_office"
-    ? JSON.stringify(parseSmartItems(raw))
-    : JSON.stringify(parseItems(raw));
+    ? JSON.stringify(parseSmartOptions(raw))
+    : JSON.stringify(parseBusinessOptions(raw));
 }
 
+/** Total number of line items across all options. */
 function itemCount(raw: string, template: QuoteTemplate): number {
-  return template === "smart_office" ? parseSmartItems(raw).length : parseItems(raw).length;
+  return template === "smart_office"
+    ? parseSmartOptions(raw).reduce((n, o) => n + o.smartItems.length, 0)
+    : parseBusinessOptions(raw).reduce((n, o) => n + o.items.length, 0);
 }
 
 /** True if the incoming form data differs from the stored quote's content. */
@@ -31,8 +34,8 @@ function contentChanged(
 ): boolean {
   const existingItemsJson =
     existing.template === "smart_office"
-      ? JSON.stringify(existing.smartItems)
-      : JSON.stringify(existing.items);
+      ? JSON.stringify(existing.smartOptions)
+      : JSON.stringify(existing.options);
   return (
     existing.client_name !== next.clientName ||
     existing.client_location !== next.clientLocation ||
@@ -162,8 +165,8 @@ export async function duplicateQuote(formData: FormData): Promise<void> {
   const quoteNumber = await nextQuoteNumber(year);
   const srcItemsJson =
     src.template === "smart_office"
-      ? JSON.stringify(src.smartItems)
-      : JSON.stringify(src.items);
+      ? JSON.stringify(src.smartOptions)
+      : JSON.stringify(src.options);
   const result = await db.run(
     `INSERT INTO quotes (quote_number, client_name, client_location, client_contact,
        quote_date, validity, scope_of_work, gst_percent, items, notes, version, template)

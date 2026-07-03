@@ -41,6 +41,15 @@ export type SmartItem = {
   one_time: boolean;
 };
 
+/**
+ * A quote can present several alternative options (e.g. "Option 1 – Basic",
+ * "Option 2 – Premium"), each with its own line items and its own totals.
+ * A quote always has at least one option; a single untitled option renders
+ * exactly like a plain quote (no "Option" heading).
+ */
+export type BusinessOption = { title: string; items: QuoteItem[] };
+export type SmartOption = { title: string; smartItems: SmartItem[] };
+
 export type QuoteInput = {
   quote_number: string;
   client_name: string;
@@ -50,8 +59,8 @@ export type QuoteInput = {
   validity: string;
   scope_of_work: string;
   gst_percent: number;
-  items: QuoteItem[];
-  smartItems: SmartItem[];
+  options: BusinessOption[]; // used when template === "business"
+  smartOptions: SmartOption[]; // used when template === "smart_office"
   notes: string;
   version: number;
   template: QuoteTemplate;
@@ -149,15 +158,76 @@ export function parseSmartItems(raw: string): SmartItem[] {
   try {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr
-      .map((x) => ({
-        description: String(x.description ?? ""),
-        per_employee_price: Number(x.per_employee_price) || 0,
-        months: Number(x.months) || 0,
-        employee_count: Number(x.employee_count) || 0,
-        one_time: Boolean(x.one_time),
-      }))
-      .filter((x) => x.description.trim().length > 0);
+    return normalizeSmartItems(arr);
+  } catch {
+    return [];
+  }
+}
+
+// ── Multi-option parsing ─────────────────────────────────────────────────────
+// The `items` column stores EITHER the legacy flat array of line items, OR the
+// new options array [{ title, items|smartItems }]. These parsers accept both.
+
+function normalizeItems(arr: unknown): QuoteItem[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((x) => ({
+      description: String((x as QuoteItem)?.description ?? ""),
+      qty: Number((x as QuoteItem)?.qty) || 0,
+      unit_price: Number((x as QuoteItem)?.unit_price) || 0,
+    }))
+    .filter((x) => x.description.trim().length > 0);
+}
+
+function normalizeSmartItems(arr: unknown): SmartItem[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((x) => ({
+      description: String((x as SmartItem)?.description ?? ""),
+      per_employee_price: Number((x as SmartItem)?.per_employee_price) || 0,
+      months: Number((x as SmartItem)?.months) || 0,
+      employee_count: Number((x as SmartItem)?.employee_count) || 0,
+      one_time: Boolean((x as SmartItem)?.one_time),
+    }))
+    .filter((x) => x.description.trim().length > 0);
+}
+
+function isOptionArray(data: unknown): data is Array<Record<string, unknown>> {
+  return (
+    Array.isArray(data) &&
+    data.length > 0 &&
+    typeof data[0] === "object" &&
+    data[0] !== null &&
+    ("items" in data[0] || "smartItems" in data[0] || "title" in data[0])
+  );
+}
+
+export function parseBusinessOptions(raw: string): BusinessOption[] {
+  try {
+    const data = JSON.parse(raw);
+    if (isOptionArray(data)) {
+      return data
+        .map((o) => ({ title: String(o.title ?? ""), items: normalizeItems(o.items) }))
+        .filter((o) => o.items.length > 0);
+    }
+    // Legacy flat array → single untitled option.
+    const items = normalizeItems(data);
+    return items.length ? [{ title: "", items }] : [];
+  } catch {
+    return [];
+  }
+}
+
+export function parseSmartOptions(raw: string): SmartOption[] {
+  try {
+    const data = JSON.parse(raw);
+    if (isOptionArray(data)) {
+      return data
+        .map((o) => ({ title: String(o.title ?? ""), smartItems: normalizeSmartItems(o.smartItems) }))
+        .filter((o) => o.smartItems.length > 0);
+    }
+    const smartItems = normalizeSmartItems(data);
+    return smartItems.length ? [{ title: "", smartItems }] : [];
   } catch {
     return [];
   }

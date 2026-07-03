@@ -101,10 +101,8 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
     const { renderSmartQuoteDocx } = await import("@/lib/quote/docx-smart");
     return renderSmartQuoteDocx(q);
   }
-  const { lines, netAmount, gstAmount, totalAmount } = computeTotals(
-    q.items,
-    q.gst_percent,
-  );
+  const options = q.options.length > 0 ? q.options : [{ title: "", items: [] }];
+  const multi = options.length > 1;
 
   // Centered Syncbyte logo as the running page header (repeats on every page).
   const logo = loadHeaderLogo();
@@ -246,53 +244,56 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
     ? [heading("Scope of Work"), para(q.scope_of_work)]
     : [];
 
-  // Commercial estimate table
-  const estHeader = new TableRow({
-    tableHeader: true,
-    children: [
-      cell("#", { width: 6, bold: true, color: WHITE, fill: BRAND }),
-      cell("Item Description", { width: 46, bold: true, color: WHITE, fill: BRAND }),
-      cell("Qty", { width: 10, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-      cell("Price / Unit (INR)", { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-      cell("Amount (INR)", { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-    ],
-  });
-  const estRows = lines.map(
-    (l, i) =>
-      new TableRow({
-        children: [
-          cell(String(i + 1), { width: 6 }),
-          cell(l.description, { width: 46 }),
-          cell(String(l.qty), { width: 10, align: AlignmentType.RIGHT }),
-          cell(formatINR(l.unit_price), { width: 19, align: AlignmentType.RIGHT }),
-          cell(formatINR(l.amount), { width: 19, align: AlignmentType.RIGHT }),
-        ],
-      }),
-  );
-  const totalRows = [
-    new TableRow({
-      children: [
-        cell("Net Amount", { width: 81, bold: true, color: GREY, align: AlignmentType.RIGHT }),
-        cell(formatINR(netAmount), { width: 19, bold: true, align: AlignmentType.RIGHT }),
-      ],
-    }),
-    new TableRow({
-      children: [
-        cell(`GST (${q.gst_percent}%)`, { width: 81, bold: true, color: GREY, align: AlignmentType.RIGHT }),
-        cell(formatINR(gstAmount), { width: 19, bold: true, align: AlignmentType.RIGHT }),
-      ],
-    }),
-    new TableRow({
-      children: [
-        cell("Total Amount (Inclusive of Tax)", { width: 81, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-        cell(formatINR(totalAmount), { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
-      ],
-    }),
+  // Commercial estimate — one titled table per option.
+  const estimateBlocks: Array<Paragraph | Table> = [
+    heading(multi ? "Commercial Estimate — Options" : "Commercial Estimate"),
   ];
-  const estTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: { top: THIN, bottom: THIN, left: THIN, right: THIN, insideHorizontal: THIN, insideVertical: THIN },
-    rows: [estHeader, ...estRows, ...totalRows],
+  options.forEach((opt, oi) => {
+    const { lines, netAmount, gstAmount, totalAmount } = computeTotals(opt.items, q.gst_percent);
+    const label = opt.title.trim() || `Option ${oi + 1}`;
+    if (multi || opt.title.trim()) {
+      estimateBlocks.push(
+        new Paragraph({
+          spacing: { before: 160, after: 60 },
+          shading: { fill: ACCENT, color: "auto" },
+          children: [new TextRun({ text: `  ${label}`, bold: true, size: 18, color: WHITE })],
+        }),
+      );
+    }
+    const estHeader = new TableRow({
+      tableHeader: true,
+      children: [
+        cell("#", { width: 6, bold: true, color: WHITE, fill: BRAND }),
+        cell("Item Description", { width: 46, bold: true, color: WHITE, fill: BRAND }),
+        cell("Qty", { width: 10, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
+        cell("Price / Unit (INR)", { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
+        cell("Amount (INR)", { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
+      ],
+    });
+    const estRows = lines.map(
+      (l, i) =>
+        new TableRow({
+          children: [
+            cell(String(i + 1), { width: 6 }),
+            cell(l.description, { width: 46 }),
+            cell(String(l.qty), { width: 10, align: AlignmentType.RIGHT }),
+            cell(formatINR(l.unit_price), { width: 19, align: AlignmentType.RIGHT }),
+            cell(formatINR(l.amount), { width: 19, align: AlignmentType.RIGHT }),
+          ],
+        }),
+    );
+    const totalRows = [
+      new TableRow({ children: [cell("Net Amount", { width: 81, bold: true, color: GREY, align: AlignmentType.RIGHT }), cell(formatINR(netAmount), { width: 19, bold: true, align: AlignmentType.RIGHT })] }),
+      new TableRow({ children: [cell(`GST (${q.gst_percent}%)`, { width: 81, bold: true, color: GREY, align: AlignmentType.RIGHT }), cell(formatINR(gstAmount), { width: 19, bold: true, align: AlignmentType.RIGHT })] }),
+      new TableRow({ children: [cell("Total Amount (Inclusive of Tax)", { width: 81, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }), cell(formatINR(totalAmount), { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT })] }),
+    ];
+    estimateBlocks.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: { top: THIN, bottom: THIN, left: THIN, right: THIN, insideHorizontal: THIN, insideVertical: THIN },
+        rows: [estHeader, ...estRows, ...totalRows],
+      }),
+    );
   });
 
   const notes: Paragraph[] = q.notes ? [heading("Notes"), para(q.notes)] : [];
@@ -341,8 +342,7 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
           heading("Quotation Details"),
           infoTable,
           ...scope,
-          heading("Commercial Estimate"),
-          estTable,
+          ...estimateBlocks,
           ...notes,
           ...terms,
           heading(QUOTE_BANK.heading),

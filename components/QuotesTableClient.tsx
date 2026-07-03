@@ -14,6 +14,7 @@ export type QuoteRowView = {
   date: string; // ISO yyyy-mm-dd
   total: number;
   template: "business" | "smart_office";
+  optionCount: number;
 };
 
 type SortKey = "quote" | "client" | "date" | "total";
@@ -136,7 +137,12 @@ export function QuotesTableClient({ quotes }: { quotes: QuoteRowView[] }) {
                   </span>
                 </td>
                 <td style={{ padding: "10px 12px", color: "#475569" }}>{prettyDate(q.date)}</td>
-                <td style={{ padding: "10px 12px", fontWeight: 600 }}>₹ {formatINR(q.total)}</td>
+                <td style={{ padding: "10px 12px", fontWeight: 600 }}>
+                  ₹ {formatINR(q.total)}
+                  {q.optionCount > 1 ? (
+                    <span style={{ color: "#94a3b8", fontWeight: 600, fontSize: "0.72rem" }}> · {q.optionCount} options</span>
+                  ) : null}
+                </td>
                 <td style={{ padding: "10px 12px" }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <Link href={`/admin/quotes/${q.id}/edit`} title="Edit" style={iconLink("#1a365d")}>

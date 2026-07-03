@@ -42,7 +42,7 @@ export default async function EditQuotePage({
               scope_of_work: quote.scope_of_work,
               gst_percent: quote.gst_percent,
               notes: quote.notes,
-              smartItems: quote.smartItems,
+              smartOptions: quote.smartOptions,
             }}
           />
         ) : (
@@ -60,7 +60,7 @@ export default async function EditQuotePage({
               scope_of_work: quote.scope_of_work,
               gst_percent: quote.gst_percent,
               notes: quote.notes,
-              items: quote.items,
+              options: quote.options,
             }}
           />
         )}

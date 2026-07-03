@@ -14,19 +14,29 @@ export default async function AdminQuotesPage() {
   if (!session) redirect("/admin");
 
   const quotes = await listQuotes();
-  const rows: QuoteRowView[] = quotes.map((q) => ({
-    id: q.id,
-    quoteNumber: q.quote_number,
-    version: q.version,
-    client: q.client_name,
-    location: q.client_location,
-    date: q.quote_date,
-    template: q.template,
-    total:
+  const rows: QuoteRowView[] = quotes.map((q) => {
+    const optionCount = q.template === "smart_office" ? q.smartOptions.length : q.options.length;
+    // For the list glance, show the first option's total.
+    const total =
       q.template === "smart_office"
-        ? computeSmartTotals(q.smartItems, q.gst_percent).totalAmount
-        : computeTotals(q.items, q.gst_percent).totalAmount,
-  }));
+        ? q.smartOptions[0]
+          ? computeSmartTotals(q.smartOptions[0].smartItems, q.gst_percent).totalAmount
+          : 0
+        : q.options[0]
+          ? computeTotals(q.options[0].items, q.gst_percent).totalAmount
+          : 0;
+    return {
+      id: q.id,
+      quoteNumber: q.quote_number,
+      version: q.version,
+      client: q.client_name,
+      location: q.client_location,
+      date: q.quote_date,
+      template: q.template,
+      total,
+      optionCount,
+    };
+  });
 
   return (
     <div style={{ background: "#f0f4f8", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif" }}>

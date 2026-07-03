@@ -84,7 +84,7 @@ export default async function NewQuotePage({
               scope_of_work: SMART_OFFICE.defaults.scopeOfWork,
               gst_percent: SMART_OFFICE.defaults.gstPercent,
               notes: "",
-              smartItems: [],
+              smartOptions: [],
             }}
           />
         ) : (
@@ -98,7 +98,7 @@ export default async function NewQuotePage({
               scope_of_work: QUOTE_DEFAULTS.scopeOfWork,
               gst_percent: QUOTE_DEFAULTS.gstPercent,
               notes: "",
-              items: [],
+              options: [],
             }}
           />
         )}

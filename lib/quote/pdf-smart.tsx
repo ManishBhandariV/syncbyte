@@ -43,6 +43,7 @@ const s = StyleSheet.create({
   title: { fontSize: 13, fontFamily: "Helvetica-Bold", color: BRAND, letterSpacing: 0.4, textAlign: "center" },
   quoteNo: { position: "absolute", right: 0, top: 1, fontSize: 9, color: ACCENT, fontFamily: "Helvetica-Bold" },
   heading: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: BRAND, marginTop: 16, marginBottom: 6 },
+  optionHeading: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#ffffff", backgroundColor: ACCENT, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 3, marginTop: 6, marginBottom: 4 },
   subHeading: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BRAND, marginTop: 6, marginBottom: 2 },
   para: { fontSize: 8.5, color: "#334155", marginBottom: 5, textAlign: "justify" },
   bullet: { flexDirection: "row", marginBottom: 2 },
@@ -115,9 +116,10 @@ function SmartDocument({
   logo: LoadedImage | null;
   customers: LoadedImage[];
 }) {
-  const { lines, netAmount, gstAmount, totalAmount } = computeSmartTotals(q.smartItems, q.gst_percent);
   const docId = fullQuoteId(q.quote_number, q.version);
   const so = SMART_OFFICE;
+  const options = q.smartOptions.length > 0 ? q.smartOptions : [{ title: "", smartItems: [] }];
+  const multi = options.length > 1;
 
   return (
     <Document title={`Quotation ${docId} — ${q.client_name}`} author={QUOTE_COMPANY.name}>
@@ -176,38 +178,49 @@ function SmartDocument({
           </View>
         </View>
 
-        {/* Pricing */}
-        <Text style={s.heading}>{so.pricingHeading}</Text>
-        <View style={s.th}>
-          <Text style={s.cSl}>Sl.</Text>
-          <Text style={s.cDesc}>Description</Text>
-          <Text style={s.cNum}>Per Emp. (INR)</Text>
-          <Text style={s.cMonths}>Months</Text>
-          <Text style={s.cCount}>Emp. Count</Text>
-          <Text style={s.cTotal}>Amount (INR)</Text>
-        </View>
-        {lines.map((l, i) => (
-          <View key={i} style={s.tr} wrap={false}>
-            <Text style={s.cSl}>{i + 1}</Text>
-            <Text style={s.cDesc}>{l.description}</Text>
-            <Text style={s.cNum}>{formatINR(l.per_employee_price)}</Text>
-            <Text style={s.cMonths}>{l.one_time ? "—" : l.months}</Text>
-            <Text style={s.cCount}>{l.employee_count}</Text>
-            <Text style={s.cTotal}>{formatINR(l.total)}</Text>
-          </View>
-        ))}
-        <View style={s.totalRow}>
-          <Text style={s.totalLabel}>Total</Text>
-          <Text style={s.totalVal}>{formatINR(netAmount)}</Text>
-        </View>
-        <View style={s.totalRow}>
-          <Text style={s.totalLabel}>GST @ {q.gst_percent}%</Text>
-          <Text style={s.totalVal}>{formatINR(gstAmount)}</Text>
-        </View>
-        <View style={s.grandRow}>
-          <Text style={s.grandLabel}>Total Amount</Text>
-          <Text style={s.grandVal}>{formatINR(totalAmount)}</Text>
-        </View>
+        {/* Pricing — one block per option */}
+        <Text style={s.heading}>
+          {multi ? `${so.pricingHeading} — Options` : so.pricingHeading}
+        </Text>
+        {options.map((opt, oi) => {
+          const { lines, netAmount, gstAmount, totalAmount } = computeSmartTotals(opt.smartItems, q.gst_percent);
+          const label = opt.title.trim() || `Option ${oi + 1}`;
+          return (
+            <View key={oi} style={{ marginBottom: multi ? 12 : 0 }}>
+              {(multi || opt.title.trim()) && <Text style={s.optionHeading}>{label}</Text>}
+              <View style={s.th}>
+                <Text style={s.cSl}>Sl.</Text>
+                <Text style={s.cDesc}>Description</Text>
+                <Text style={s.cNum}>Per Emp. (INR)</Text>
+                <Text style={s.cMonths}>Months</Text>
+                <Text style={s.cCount}>Emp. Count</Text>
+                <Text style={s.cTotal}>Amount (INR)</Text>
+              </View>
+              {lines.map((l, i) => (
+                <View key={i} style={s.tr} wrap={false}>
+                  <Text style={s.cSl}>{i + 1}</Text>
+                  <Text style={s.cDesc}>{l.description}</Text>
+                  <Text style={s.cNum}>{formatINR(l.per_employee_price)}</Text>
+                  <Text style={s.cMonths}>{l.one_time ? "—" : l.months}</Text>
+                  <Text style={s.cCount}>{l.employee_count}</Text>
+                  <Text style={s.cTotal}>{formatINR(l.total)}</Text>
+                </View>
+              ))}
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>Total</Text>
+                <Text style={s.totalVal}>{formatINR(netAmount)}</Text>
+              </View>
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>GST @ {q.gst_percent}%</Text>
+                <Text style={s.totalVal}>{formatINR(gstAmount)}</Text>
+              </View>
+              <View style={s.grandRow}>
+                <Text style={s.grandLabel}>Total Amount</Text>
+                <Text style={s.grandVal}>{formatINR(totalAmount)}</Text>
+              </View>
+            </View>
+          );
+        })}
 
         {so.pricingNotes.map((n, i) => (
           <View key={i} style={[s.bullet, { marginTop: i === 0 ? 8 : 2 }]} wrap={false}>
