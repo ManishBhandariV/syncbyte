@@ -27,8 +27,10 @@ export async function login(
   }
 
   const db = await getDb();
+  // Only 'admin'-role users can sign into the main admin panel (Dharmesh's
+  // quote-only account has role 'dharmesh' and logs in at /dharmesh instead).
   const user = await db.get<AdminUser>(
-    "SELECT id, username, password_hash FROM admin_users WHERE username = ?",
+    "SELECT id, username, password_hash FROM admin_users WHERE username = ? AND role = 'admin'",
     [username],
   );
   if (!user) {
@@ -823,6 +825,7 @@ export type ImportSummary = {
     metaUpserted: number;
     customsAdded: number;
     customBrandsAdded: number;
+    detailsUpdated: number;
     errors: string[];
   };
 };
@@ -900,13 +903,23 @@ export async function importProductsCsv(
   const errors: string[] = [];
   const customsToInsert: Array<{ product_id: string; category_slug: string; name: string; short_desc: string }> = [];
   const metaToWrite: Array<{ product_id: string; brand: string | null; name_override: string | null; is_hidden: number }> = [];
+  const detailsToWrite: Array<{ product_id: string; specs?: string; features?: string; downloads?: string }> = [];
   const customBrands = new Set<string>();
 
   // Skip header row.
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    const [categoryName, productId, name, displayName, brand, custom, hidden] = r;
+    const [categoryName, productId, name, displayName, brand, custom, hidden, specsCell, featuresCell, downloadsCell] = r;
     if (!productId) continue;
+    // Collect Specs/Features/Downloads content (only non-empty cells are applied).
+    if ((specsCell || "").trim() || (featuresCell || "").trim() || (downloadsCell || "").trim()) {
+      detailsToWrite.push({
+        product_id: productId,
+        specs: (specsCell || "").trim() || undefined,
+        features: (featuresCell || "").trim() || undefined,
+        downloads: (downloadsCell || "").trim() || undefined,
+      });
+    }
     const isHidden = (hidden || "").trim().toLowerCase() === "yes" ? 1 : 0;
     const isCustom = (custom || "").trim().toLowerCase() === "yes";
     const brandClean = (brand || "").trim();
@@ -1019,6 +1032,58 @@ export async function importProductsCsv(
     }
   }
 
+  // Apply Specs / Features / Downloads. A non-empty cell REPLACES that product's
+  // existing set; an empty/omitted cell leaves it untouched.
+  let detailsUpdated = 0;
+  for (const d of detailsToWrite) {
+    try {
+      if (d.specs !== undefined) {
+        await db.run("DELETE FROM product_specs WHERE product_id = ?", [d.product_id]);
+        const pairs = d.specs.split("|").map((s) => s.trim()).filter(Boolean);
+        for (let k = 0; k < pairs.length; k++) {
+          const idx = pairs[k].indexOf(":");
+          const key = (idx >= 0 ? pairs[k].slice(0, idx) : pairs[k]).trim();
+          const val = (idx >= 0 ? pairs[k].slice(idx + 1) : "").trim();
+          if (key) {
+            await db.run(
+              "INSERT INTO product_specs (product_id, spec_key, spec_value, display_order) VALUES (?, ?, ?, ?)",
+              [d.product_id, key, val, k],
+            );
+          }
+        }
+      }
+      if (d.features !== undefined) {
+        await db.run("DELETE FROM product_features WHERE product_id = ?", [d.product_id]);
+        const feats = d.features.split("|").map((s) => s.trim()).filter(Boolean);
+        for (let k = 0; k < feats.length; k++) {
+          await db.run(
+            "INSERT INTO product_features (product_id, feature, display_order) VALUES (?, ?, ?)",
+            [d.product_id, feats[k], k],
+          );
+        }
+      }
+      if (d.downloads !== undefined) {
+        await db.run("DELETE FROM product_downloads WHERE product_id = ?", [d.product_id]);
+        const dls = d.downloads.split("|").map((s) => s.trim()).filter(Boolean);
+        for (let k = 0; k < dls.length; k++) {
+          const idx = dls[k].indexOf("=");
+          const title = (idx >= 0 ? dls[k].slice(0, idx) : dls[k]).trim();
+          const url = (idx >= 0 ? dls[k].slice(idx + 1) : "").trim();
+          if (title && url) {
+            const ftype = /\.pdf(\?|$)/i.test(url) ? "pdf" : "other";
+            await db.run(
+              "INSERT INTO product_downloads (product_id, file_title, file_url, file_type, display_order) VALUES (?, ?, ?, ?, ?)",
+              [d.product_id, title, url, ftype, k],
+            );
+          }
+        }
+      }
+      detailsUpdated++;
+    } catch (e) {
+      errors.push(`details ${d.product_id}: ${(e as Error).message}`);
+    }
+  }
+
   revalidatePath("/admin");
   revalidatePath("/admin/brands");
   revalidatePath("/products", "layout");
@@ -1035,6 +1100,7 @@ export async function importProductsCsv(
       metaUpserted,
       customsAdded,
       customBrandsAdded,
+      detailsUpdated,
       errors,
     },
   };

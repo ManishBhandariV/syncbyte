@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'admin',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -213,6 +214,7 @@ const MIGRATIONS = [
   "ALTER TABLE contact_enquiries ADD COLUMN email_error TEXT",
   "ALTER TABLE quotes ADD COLUMN version INTEGER NOT NULL DEFAULT 1",
   "ALTER TABLE quotes ADD COLUMN template TEXT NOT NULL DEFAULT 'business'",
+  "ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'",
 ];
 
 export const sqliteDriver: DbDriver = {

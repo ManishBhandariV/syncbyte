@@ -16,10 +16,16 @@ export function ImportClient() {
         </h2>
         <p style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: 6, lineHeight: 1.55 }}>
           Upload a CSV in the export format
-          (<code>Category, Product&nbsp;ID, Name, Display&nbsp;Name, Brand, Custom, Hidden, …</code>).
+          (<code>Category, Product&nbsp;ID, Name, Display&nbsp;Name, Brand, Custom, Hidden, Specifications, Features, Downloads</code>).
           Existing products get their meta updated (brand / display name / hidden). Rows with
           <strong> Custom=yes</strong> and an unknown product&nbsp;ID are created as new
           custom products. Unknown brands are added automatically.
+        </p>
+        <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: 6, lineHeight: 1.55, background: "#f8fafc", padding: 10, borderRadius: 8 }}>
+          <strong>Details format</strong> (a non-empty cell replaces that product&apos;s set; leave blank to keep):<br />
+          • <strong>Specifications</strong>: <code>Key: Value | Key: Value</code> — e.g. <code>Verification: &lt;1s | Users: 3000</code><br />
+          • <strong>Features</strong>: <code>Feature one | Feature two | Feature three</code><br />
+          • <strong>Downloads</strong> (incl. datasheet): <code>Title = https://url | Datasheet = https://url</code>
         </p>
       </div>
 
@@ -68,6 +74,7 @@ export function ImportClient() {
             <li>📝 product_meta upserts: <strong>{result.totals.metaUpserted}</strong></li>
             <li>➕ Custom products added/updated: <strong>{result.totals.customsAdded}</strong></li>
             <li>🏷️ New brands added: <strong>{result.totals.customBrandsAdded}</strong></li>
+            <li>📄 Specs/Features/Downloads updated: <strong>{result.totals.detailsUpdated}</strong></li>
           </ul>
           {result.totals.errors.length > 0 && (
             <details style={{ marginTop: 10 }}>

@@ -58,8 +58,10 @@ const SCHEMA_STATEMENTS = [
     id            SERIAL PRIMARY KEY,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'admin',
     created_at    TIMESTAMPTZ DEFAULT NOW()
   )`,
+  `ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'`,
   `CREATE TABLE IF NOT EXISTS reviews (
     id          SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,

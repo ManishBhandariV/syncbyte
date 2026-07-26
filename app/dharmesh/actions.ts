@@ -1,13 +1,12 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { getDb } from "@/lib/db";
 import { setDharmeshSession, clearDharmeshSession } from "@/lib/auth";
+import type { AdminUser } from "@/lib/db/types";
 
 export type LoginResult = { ok: boolean; error?: string };
-
-// Fixed quote-only credentials. Override in prod via env if desired.
-const DHARMESH_USER = process.env.DHARMESH_USER ?? "Syncbyte";
-const DHARMESH_PASS = process.env.DHARMESH_PASS ?? "Kanan@123";
 
 export async function dharmeshLogin(
   _prev: LoginResult | null,
@@ -18,10 +17,21 @@ export async function dharmeshLogin(
   if (!username || !password) {
     return { ok: false, error: "Username and password are required." };
   }
-  if (username !== DHARMESH_USER || password !== DHARMESH_PASS) {
+  // Validated against the bcrypt hash in admin_users (role 'dharmesh'), exactly
+  // like the main admin login.
+  const db = await getDb();
+  const user = await db.get<AdminUser>(
+    "SELECT id, username, password_hash FROM admin_users WHERE username = ? AND role = 'dharmesh'",
+    [username],
+  );
+  if (!user) {
     return { ok: false, error: "Invalid username or password." };
   }
-  await setDharmeshSession(username);
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid) {
+    return { ok: false, error: "Invalid username or password." };
+  }
+  await setDharmeshSession(user.username);
   redirect("/dharmesh/quotes");
 }
 

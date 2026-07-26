@@ -43,6 +43,7 @@ export type AdminUser = {
   id: number;
   username: string;
   password_hash: string;
+  role: string; // "admin" | "dharmesh"
 };
 
 export type Review = {
