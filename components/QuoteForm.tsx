@@ -26,6 +26,7 @@ type Props = {
     notes: string;
     options: BusinessOption[];
   };
+  productLinks?: Array<{ name: string; url: string }>;
   justCreated?: boolean;
 };
 
@@ -45,8 +46,12 @@ function blankOption(): BusinessOption {
   return { title: "", items: [blankItem()] };
 }
 
-export function QuoteForm({ id, quoteNumber, version, defaults, justCreated }: Props) {
+export function QuoteForm({ id, quoteNumber, version, defaults, productLinks = [], justCreated }: Props) {
   const [result, action, pending] = useActionState(saveQuote, INITIAL);
+  const linkMap = useMemo(
+    () => new Map(productLinks.map((p) => [p.name.trim().toLowerCase(), p.url])),
+    [productLinks],
+  );
   const [options, setOptions] = useState<BusinessOption[]>(
     defaults.options.length > 0 ? defaults.options.map((o) => ({ ...o, items: [...o.items] })) : [blankOption()],
   );
@@ -106,6 +111,13 @@ export function QuoteForm({ id, quoteNumber, version, defaults, justCreated }: P
       <input type="hidden" name="id" value={id ?? 0} />
       <input type="hidden" name="template" value="business" />
       <input type="hidden" name="items" value={JSON.stringify(cleanOptions)} />
+      {productLinks.length > 0 && (
+        <datalist id="sb-product-list">
+          {productLinks.map((p) => (
+            <option key={p.url} value={p.name} />
+          ))}
+        </datalist>
+      )}
 
       {justCreated && (
         <FormBanner result={{ ok: true, message: `Quote ${quoteNumber} created. Download it below or keep editing.` }} />
@@ -182,7 +194,23 @@ export function QuoteForm({ id, quoteNumber, version, defaults, justCreated }: P
                     return (
                       <tr key={ii} style={{ borderBottom: "1px solid #f0f4f8" }}>
                         <td style={{ ...tdStyle, color: "#94a3b8" }}>{ii + 1}</td>
-                        <td style={tdStyle}><input value={it.description} onChange={(e) => setItem(oi, ii, { description: e.target.value })} placeholder="eSSL F-22 + Wi-Fi Biometric Device" style={{ ...inputStyle, fontSize: "0.85rem" }} /></td>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <input
+                              list="sb-product-list"
+                              value={it.description}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setItem(oi, ii, { description: v, href: linkMap.get(v.trim().toLowerCase()) });
+                              }}
+                              placeholder="Type or pick a product…"
+                              style={{ ...inputStyle, fontSize: "0.85rem" }}
+                            />
+                            {it.href ? (
+                              <i className="fas fa-link" title={`Links to ${it.href}`} style={{ color: "#0ea5e9", fontSize: "0.8rem" }} />
+                            ) : null}
+                          </div>
+                        </td>
                         <td style={tdStyle}><input type="number" min={0} step="1" value={it.qty} onChange={(e) => setItem(oi, ii, { qty: Number(e.target.value) })} style={{ ...inputStyle, fontSize: "0.85rem", textAlign: "right" }} /></td>
                         <td style={tdStyle}><input type="number" min={0} step="0.01" value={it.unit_price} onChange={(e) => setItem(oi, ii, { unit_price: Number(e.target.value) })} style={{ ...inputStyle, fontSize: "0.85rem", textAlign: "right" }} /></td>
                         <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>{formatINR(amount)}</td>

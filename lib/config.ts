@@ -1,4 +1,5 @@
 export const siteConfig = {
+  siteUrl: "https://syncbyte.in",
   companyName: "Syncbyte Innovations Pvt. Ltd.",
   companyEmail: "info@syncbyte.in",
   companyPhone: "+91 9998657230",

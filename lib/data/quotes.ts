@@ -25,6 +25,8 @@ export type QuoteItem = {
   description: string;
   qty: number;
   unit_price: number;
+  /** Optional absolute URL to the product page; renders the description as a link. */
+  href?: string;
 };
 
 /**
@@ -171,11 +173,16 @@ export function parseSmartItems(raw: string): SmartItem[] {
 function normalizeItems(arr: unknown): QuoteItem[] {
   if (!Array.isArray(arr)) return [];
   return arr
-    .map((x) => ({
-      description: String((x as QuoteItem)?.description ?? ""),
-      qty: Number((x as QuoteItem)?.qty) || 0,
-      unit_price: Number((x as QuoteItem)?.unit_price) || 0,
-    }))
+    .map((x) => {
+      const href = String((x as QuoteItem)?.href ?? "").trim();
+      const item: QuoteItem = {
+        description: String((x as QuoteItem)?.description ?? ""),
+        qty: Number((x as QuoteItem)?.qty) || 0,
+        unit_price: Number((x as QuoteItem)?.unit_price) || 0,
+      };
+      if (href.startsWith("http")) item.href = href;
+      return item;
+    })
     .filter((x) => x.description.trim().length > 0);
 }
 

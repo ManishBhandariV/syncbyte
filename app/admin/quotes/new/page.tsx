@@ -6,6 +6,7 @@ import { QuoteForm } from "@/components/QuoteForm";
 import { SmartQuoteForm } from "@/components/SmartQuoteForm";
 import { QUOTE_DEFAULTS, SMART_OFFICE } from "@/lib/data/quote-config";
 import { QUOTE_TEMPLATES, type QuoteTemplate } from "@/lib/data/quotes";
+import { loadProductLinks } from "@/lib/data/products-server";
 
 export const metadata = { title: "Admin · New Quote" };
 export const dynamic = "force-dynamic";
@@ -65,6 +66,7 @@ export default async function NewQuotePage({
   }
 
   const chosen = template as QuoteTemplate;
+  const productLinks = chosen === "business" ? await loadProductLinks() : [];
 
   return (
     <div style={{ background: "#f0f4f8", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif" }}>
@@ -89,6 +91,7 @@ export default async function NewQuotePage({
           />
         ) : (
           <QuoteForm
+            productLinks={productLinks}
             defaults={{
               client_name: "",
               client_location: "",

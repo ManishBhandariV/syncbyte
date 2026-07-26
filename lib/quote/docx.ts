@@ -12,6 +12,7 @@ import {
   BorderStyle,
   Header,
   ImageRun,
+  ExternalHyperlink,
   TabStopType,
   TabStopPosition,
 } from "docx";
@@ -270,12 +271,29 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
         cell("Amount (INR)", { width: 19, bold: true, color: WHITE, fill: BRAND, align: AlignmentType.RIGHT }),
       ],
     });
+    const descCell = (l: (typeof lines)[number]) =>
+      l.href
+        ? new TableCell({
+            width: { size: 46, type: WidthType.PERCENTAGE },
+            margins: { top: 40, bottom: 40, left: 60, right: 60 },
+            children: [
+              new Paragraph({
+                children: [
+                  new ExternalHyperlink({
+                    link: l.href,
+                    children: [new TextRun({ text: l.description, size: 16, color: "0EA5E9", underline: {} })],
+                  }),
+                ],
+              }),
+            ],
+          })
+        : cell(l.description, { width: 46 });
     const estRows = lines.map(
       (l, i) =>
         new TableRow({
           children: [
             cell(String(i + 1), { width: 6 }),
-            cell(l.description, { width: 46 }),
+            descCell(l),
             cell(String(l.qty), { width: 10, align: AlignmentType.RIGHT }),
             cell(formatINR(l.unit_price), { width: 19, align: AlignmentType.RIGHT }),
             cell(formatINR(l.amount), { width: 19, align: AlignmentType.RIGHT }),

@@ -1,8 +1,14 @@
 import "server-only";
 import { getDb } from "@/lib/db";
-import { productCategories, type Product, type ProductCategory } from "@/lib/data/products";
+import {
+  productCategories,
+  getProductUrl,
+  type Product,
+  type ProductCategory,
+} from "@/lib/data/products";
 import type { CustomCategory, CustomProduct } from "@/lib/db/types";
 import type { ProductMetaMap } from "@/lib/data/product-meta";
+import { siteConfig } from "@/lib/config";
 
 /**
  * Loads admin-added custom categories + custom products and merges them with
@@ -83,6 +89,40 @@ export async function loadEffectiveCategories(
 function isHidden(productId: string, meta: ProductMetaMap): boolean {
   const m = meta.get(productId);
   return !!m && (m as unknown as { is_hidden?: number }).is_hidden === 1;
+}
+
+/**
+ * Flat list of every product (static + custom) with its absolute page URL —
+ * used by the quote form to autocomplete descriptions and link them to the
+ * live product page inside the generated PDF/Word.
+ */
+export async function loadProductLinks(): Promise<Array<{ name: string; url: string }>> {
+  const seen = new Set<string>();
+  const out: Array<{ name: string; url: string }> = [];
+  const push = (name: string, url: string) => {
+    const key = name.trim().toLowerCase();
+    if (!name.trim() || seen.has(key)) return;
+    seen.add(key);
+    out.push({ name: name.trim(), url });
+  };
+  for (const [slug, cat] of Object.entries(productCategories)) {
+    for (const p of cat.products) {
+      push(p.name, `${siteConfig.siteUrl}${getProductUrl(slug, p.id)}`);
+    }
+  }
+  try {
+    const db = await getDb();
+    const rows = await db.all<CustomProduct>(
+      "SELECT product_id, category_slug, name FROM custom_products ORDER BY created_at",
+    );
+    for (const r of rows) {
+      push(r.name, `${siteConfig.siteUrl}${getProductUrl(r.category_slug, r.product_id)}`);
+    }
+  } catch (e) {
+    console.warn("[products] product-links custom read failed", e);
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name));
+  return out;
 }
 
 /**

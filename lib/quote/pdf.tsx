@@ -5,6 +5,7 @@ import {
   View,
   Text,
   Image,
+  Link,
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
@@ -139,6 +140,7 @@ const s = StyleSheet.create({
   },
   cNum: { width: 22 },
   cDesc: { flex: 1 },
+  cDescLink: { flex: 1, color: ACCENT, textDecoration: "underline" },
   cQty: { width: 38, textAlign: "right" },
   cPrice: { width: 78, textAlign: "right" },
   cAmt: { width: 82, textAlign: "right" },
@@ -303,7 +305,11 @@ function QuoteDocument({
               {lines.map((l, i) => (
                 <View key={i} style={s.tr} wrap={false}>
                   <Text style={s.cNum}>{i + 1}</Text>
-                  <Text style={s.cDesc}>{l.description}</Text>
+                  {l.href ? (
+                    <Link src={l.href} style={s.cDescLink}>{l.description}</Link>
+                  ) : (
+                    <Text style={s.cDesc}>{l.description}</Text>
+                  )}
                   <Text style={s.cQty}>{l.qty}</Text>
                   <Text style={s.cPrice}>{formatINR(l.unit_price)}</Text>
                   <Text style={s.cAmt}>{formatINR(l.amount)}</Text>

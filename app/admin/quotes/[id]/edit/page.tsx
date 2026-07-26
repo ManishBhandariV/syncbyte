@@ -4,6 +4,7 @@ import { AdminTopBar } from "@/components/AdminTopBar";
 import { QuoteForm } from "@/components/QuoteForm";
 import { SmartQuoteForm } from "@/components/SmartQuoteForm";
 import { getQuote } from "@/lib/data/quotes-server";
+import { loadProductLinks } from "@/lib/data/products-server";
 
 export const metadata = { title: "Admin · Edit Quote" };
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function EditQuotePage({
   const { created } = await searchParams;
   const quote = await getQuote(Number(id));
   if (!quote) notFound();
+  const productLinks = quote.template === "business" ? await loadProductLinks() : [];
 
   return (
     <div style={{ background: "#f0f4f8", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif" }}>
@@ -51,6 +53,7 @@ export default async function EditQuotePage({
             quoteNumber={quote.quote_number}
             version={quote.version}
             justCreated={created === "1"}
+            productLinks={productLinks}
             defaults={{
               client_name: quote.client_name,
               client_location: quote.client_location,
