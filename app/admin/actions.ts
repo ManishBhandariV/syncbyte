@@ -27,13 +27,17 @@ export async function login(
   }
 
   const db = await getDb();
-  // Only 'admin'-role users can sign into the main admin panel (Dharmesh's
-  // quote-only account has role 'dharmesh' and logs in at /dharmesh instead).
   const user = await db.get<AdminUser>(
-    "SELECT id, username, password_hash FROM admin_users WHERE username = ? AND role = 'admin'",
+    "SELECT id, username, password_hash, role FROM admin_users WHERE username = ?",
     [username],
   );
   if (!user) {
+    return { ok: false, error: "Invalid username or password." };
+  }
+  // Dharmesh's quote-only account (role 'dharmesh') logs in at /dharmesh, not
+  // the main admin panel. Any other role (admin / legacy) is allowed here — this
+  // avoids ever locking out the admin if the role value is unexpected.
+  if (user.role === "dharmesh") {
     return { ok: false, error: "Invalid username or password." };
   }
   const valid = await bcrypt.compare(password, user.password_hash);
