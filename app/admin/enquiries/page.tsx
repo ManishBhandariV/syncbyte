@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import type { ContactEnquiry } from "@/lib/db/types";
 import { AdminTopBar } from "@/components/AdminTopBar";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { deleteEnquiry } from "@/app/admin/actions";
 
 export const metadata = { title: "Admin · Enquiries" };
 export const dynamic = "force-dynamic";
@@ -88,9 +90,17 @@ export default async function AdminEnquiriesPage() {
                         </span>
                       )}
                     </h3>
-                    <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
-                      {new Date(e.created_at).toLocaleString()}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                        {new Date(e.created_at).toLocaleString()}
+                      </span>
+                      <ConfirmDeleteButton
+                        action={deleteEnquiry}
+                        id={e.id}
+                        title="Delete enquiry"
+                        confirmText={`Delete the enquiry from ${e.name}? This cannot be undone.`}
+                      />
+                    </div>
                   </div>
                   <div
                     style={{

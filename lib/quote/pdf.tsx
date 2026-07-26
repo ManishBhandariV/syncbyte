@@ -113,6 +113,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   para: { fontSize: 8.5, color: "#334155", marginBottom: 5, textAlign: "justify" },
+  notesText: { fontSize: 8.5, color: "#c0000c", fontFamily: "Helvetica-Bold", marginBottom: 5, textAlign: "justify" },
   // client info grid
   infoBox: { backgroundColor: LIGHT, borderRadius: 4, padding: 10, marginTop: 6 },
   infoRow: { flexDirection: "row", marginBottom: 3 },
@@ -327,7 +328,7 @@ function QuoteDocument({
         {q.notes ? (
           <>
             <Text style={s.sectionHeading}>Notes</Text>
-            <Text style={s.para}>{q.notes}</Text>
+            <Text style={s.notesText}>{q.notes}</Text>
           </>
         ) : null}
 

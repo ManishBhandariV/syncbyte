@@ -46,6 +46,7 @@ const s = StyleSheet.create({
   optionHeading: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: "#ffffff", backgroundColor: ACCENT, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 3, marginTop: 6, marginBottom: 4 },
   subHeading: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BRAND, marginTop: 6, marginBottom: 2 },
   para: { fontSize: 8.5, color: "#334155", marginBottom: 5, textAlign: "justify" },
+  notesText: { fontSize: 8.5, color: "#c0000c", fontFamily: "Helvetica-Bold", marginBottom: 5, textAlign: "justify" },
   bullet: { flexDirection: "row", marginBottom: 2 },
   bulletDot: { width: 10, fontSize: 8.5, color: ACCENT },
   bulletText: { flex: 1, fontSize: 8.5, color: "#334155" },
@@ -239,7 +240,7 @@ function SmartDocument({
 
         <Text style={[s.para, { marginTop: 8, fontFamily: "Helvetica-Bold" }]}>{so.paymentLine}</Text>
         {q.scope_of_work ? <Text style={s.para}>Scope: {q.scope_of_work}</Text> : null}
-        {q.notes ? <Text style={s.para}>{q.notes}</Text> : null}
+        {q.notes ? <Text style={s.notesText}>{q.notes}</Text> : null}
 
         {/* Feature matrix */}
         <Text style={s.heading}>{so.featureMatrixHeading}</Text>

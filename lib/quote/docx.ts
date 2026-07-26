@@ -296,7 +296,15 @@ export async function renderQuoteDocx(q: QuoteInput): Promise<Buffer> {
     );
   });
 
-  const notes: Paragraph[] = q.notes ? [heading("Notes"), para(q.notes)] : [];
+  const notes: Paragraph[] = q.notes
+    ? [
+        heading("Notes"),
+        new Paragraph({
+          spacing: { after: 80 },
+          children: [new TextRun({ text: q.notes, bold: true, size: 17, color: "C0000C" })],
+        }),
+      ]
+    : [];
 
   // Terms
   const terms: Paragraph[] = [

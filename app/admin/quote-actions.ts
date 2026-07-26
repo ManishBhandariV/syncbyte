@@ -150,6 +150,15 @@ export async function deleteQuote(formData: FormData): Promise<void> {
   revalidatePath("/admin/quotes");
 }
 
+/** Delete ALL quotes (clears the table). Guarded by admin session. */
+export async function deleteAllQuotes(): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+  const db = await getDb();
+  await db.run("DELETE FROM quotes");
+  revalidatePath("/admin/quotes");
+}
+
 /** Clone an existing quote into a new draft and open it for editing. */
 export async function duplicateQuote(formData: FormData): Promise<void> {
   const session = await getSession();

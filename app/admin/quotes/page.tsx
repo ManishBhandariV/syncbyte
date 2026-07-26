@@ -5,6 +5,8 @@ import { listQuotes } from "@/lib/data/quotes-server";
 import { computeTotals, computeSmartTotals } from "@/lib/data/quotes";
 import { AdminTopBar } from "@/components/AdminTopBar";
 import { QuotesTableClient, type QuoteRowView } from "@/components/QuotesTableClient";
+import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { deleteAllQuotes } from "@/app/admin/quote-actions";
 
 export const metadata = { title: "Admin · Quotes" };
 export const dynamic = "force-dynamic";
@@ -49,12 +51,22 @@ export default async function AdminQuotesPage() {
               Build branded quotes and download them as PDF or Word. Click a column header to sort.
             </p>
           </div>
-          <Link
-            href="/admin/quotes/new"
-            style={{ background: "#10b981", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none" }}
-          >
-            <i className="fas fa-plus" /> New quote
-          </Link>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {rows.length > 0 && (
+              <ConfirmDeleteButton
+                action={deleteAllQuotes}
+                confirmText={`Delete ALL ${rows.length} quotes? This clears the quotes table and cannot be undone.`}
+                label="Delete all"
+                title="Delete all quotes"
+              />
+            )}
+            <Link
+              href="/admin/quotes/new"
+              style={{ background: "#10b981", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none" }}
+            >
+              <i className="fas fa-plus" /> New quote
+            </Link>
+          </div>
         </div>
 
         <QuotesTableClient quotes={rows} />

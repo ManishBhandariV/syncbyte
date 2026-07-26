@@ -85,6 +85,17 @@ export async function deleteSpec(formData: FormData): Promise<void> {
   if (productId) revalidatePath("/products", "layout");
 }
 
+// ── Contact enquiries ─────────────────────────────────────────────────────────
+export async function deleteEnquiry(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+  const id = Number(formData.get("id") ?? 0);
+  if (id <= 0) return;
+  const db = await getDb();
+  await db.run("DELETE FROM contact_enquiries WHERE id = ?", [id]);
+  revalidatePath("/admin/enquiries");
+}
+
 // ── Product downloads ─────────────────────────────────────────────────────────
 export async function saveDownload(formData: FormData): Promise<void> {
   const id = Number(formData.get("id") ?? 0);

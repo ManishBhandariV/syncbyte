@@ -216,7 +216,7 @@ export async function renderSmartQuoteDocx(q: QuoteInput): Promise<Buffer> {
 
   body.push(para(so.paymentLine, { bold: true }));
   if (q.scope_of_work) body.push(para(`Scope: ${q.scope_of_work}`));
-  if (q.notes) body.push(para(q.notes));
+  if (q.notes) body.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: q.notes, bold: true, size: 17, color: "C0000C" })] }));
 
   // Feature matrix (3-col table; each cell stacks the column's groups)
   body.push(new Paragraph({ pageBreakBefore: true, children: [] }));
