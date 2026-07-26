@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { hasQuoteAccess } from "@/lib/auth";
 import { nextQuoteNumber, getQuote, type Quote } from "@/lib/data/quotes-server";
 import { parseBusinessOptions, parseSmartOptions, type QuoteTemplate } from "@/lib/data/quotes";
 
@@ -58,9 +58,11 @@ export async function saveQuote(
   _prev: QuoteActionResult | null,
   formData: FormData,
 ): Promise<QuoteActionResult> {
-  const session = await getSession();
+  const session = await hasQuoteAccess();
   if (!session) return { ok: false, message: "Unauthorized." };
 
+  // Where the quote UI lives for this user ("/admin/quotes" or "/dharmesh/quotes").
+  const basePath = String(formData.get("base_path") ?? "/admin/quotes");
   const id = Number(formData.get("id") ?? 0);
   const clientName = String(formData.get("client_name") ?? "").trim();
   const clientLocation = String(formData.get("client_location") ?? "").trim();
@@ -109,7 +111,8 @@ export async function saveQuote(
         [clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes, nextVersion, id],
       );
       revalidatePath("/admin/quotes");
-      revalidatePath(`/admin/quotes/${id}/edit`);
+      revalidatePath("/dharmesh/quotes");
+      revalidatePath(`${basePath}/${id}/edit`);
       const bumped = existing && nextVersion !== existing.version;
       return {
         ok: true,
@@ -127,8 +130,9 @@ export async function saveQuote(
       [quoteNumber, clientName, clientLocation, clientContact, quoteDate, validity, scope, gstPercent, itemsJson, notes, template],
     );
     revalidatePath("/admin/quotes");
+    revalidatePath("/dharmesh/quotes");
     const newId = result.insertId;
-    if (newId) redirect(`/admin/quotes/${newId}/edit?created=1`);
+    if (newId) redirect(`${basePath}/${newId}/edit?created=1`);
     return { ok: true, message: `Quote ${quoteNumber} created.` };
   } catch (e) {
     // redirect() throws a special error we must rethrow.
@@ -141,27 +145,29 @@ export async function saveQuote(
 }
 
 export async function deleteQuote(formData: FormData): Promise<void> {
-  const session = await getSession();
+  const session = await hasQuoteAccess();
   if (!session) return;
   const id = Number(formData.get("id") ?? 0);
   if (id <= 0) return;
   const db = await getDb();
   await db.run("DELETE FROM quotes WHERE id = ?", [id]);
   revalidatePath("/admin/quotes");
+  revalidatePath("/dharmesh/quotes");
 }
 
 /** Delete ALL quotes (clears the table). Guarded by admin session. */
 export async function deleteAllQuotes(): Promise<void> {
-  const session = await getSession();
+  const session = await hasQuoteAccess();
   if (!session) return;
   const db = await getDb();
   await db.run("DELETE FROM quotes");
   revalidatePath("/admin/quotes");
+  revalidatePath("/dharmesh/quotes");
 }
 
 /** Clone an existing quote into a new draft and open it for editing. */
 export async function duplicateQuote(formData: FormData): Promise<void> {
-  const session = await getSession();
+  const session = await hasQuoteAccess();
   if (!session) return;
   const id = Number(formData.get("id") ?? 0);
   if (id <= 0) return;
@@ -194,6 +200,8 @@ export async function duplicateQuote(formData: FormData): Promise<void> {
       src.template,
     ],
   );
+  const basePath = String(formData.get("base_path") ?? "/admin/quotes");
   revalidatePath("/admin/quotes");
-  if (result.insertId) redirect(`/admin/quotes/${result.insertId}/edit`);
+  revalidatePath("/dharmesh/quotes");
+  if (result.insertId) redirect(`${basePath}/${result.insertId}/edit`);
 }

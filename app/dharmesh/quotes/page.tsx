@@ -1,24 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getDharmeshSession } from "@/lib/auth";
 import { loadQuoteRows } from "@/lib/data/quotes-server";
-import { AdminTopBar } from "@/components/AdminTopBar";
+import { DharmeshBar } from "@/components/DharmeshBar";
 import { QuotesTableClient } from "@/components/QuotesTableClient";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { deleteAllQuotes } from "@/app/admin/quote-actions";
 
-export const metadata = { title: "Admin · Quotes" };
+export const metadata = { title: "Quotation Portal · Quotes", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-export default async function AdminQuotesPage() {
-  const session = await getSession();
-  if (!session) redirect("/admin");
+const BASE = "/dharmesh/quotes";
+
+export default async function DharmeshQuotesPage() {
+  const session = await getDharmeshSession();
+  if (!session) redirect("/dharmesh");
 
   const rows = await loadQuoteRows();
 
   return (
     <div style={{ background: "#f0f4f8", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif" }}>
-      <AdminTopBar title="Quotes" username={session.username} activeTab="quotes" />
+      <DharmeshBar title="Quotation Portal" username={session.username} />
       <div style={{ padding: 28, maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
@@ -31,21 +33,18 @@ export default async function AdminQuotesPage() {
             {rows.length > 0 && (
               <ConfirmDeleteButton
                 action={deleteAllQuotes}
-                confirmText={`Delete ALL ${rows.length} quotes? This clears the quotes table and cannot be undone.`}
+                confirmText={`Delete ALL ${rows.length} quotes? This cannot be undone.`}
                 label="Delete all"
                 title="Delete all quotes"
               />
             )}
-            <Link
-              href="/admin/quotes/new"
-              style={{ background: "#10b981", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none" }}
-            >
+            <Link href={`${BASE}/new`} style={{ background: "#10b981", color: "#fff", padding: "10px 18px", borderRadius: 8, fontSize: "0.9rem", fontWeight: 600, textDecoration: "none" }}>
               <i className="fas fa-plus" /> New quote
             </Link>
           </div>
         </div>
 
-        <QuotesTableClient quotes={rows} />
+        <QuotesTableClient quotes={rows} basePath={BASE} />
       </div>
     </div>
   );

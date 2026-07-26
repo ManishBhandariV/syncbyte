@@ -4,12 +4,27 @@ import type { QuoteRow } from "@/lib/db/types";
 import {
   parseBusinessOptions,
   parseSmartOptions,
+  computeTotals,
+  computeSmartTotals,
   type QuoteInput,
   type BusinessOption,
   type SmartOption,
   type QuoteTemplate,
 } from "@/lib/data/quotes";
 import { QUOTE_NUMBER } from "@/lib/data/quote-config";
+
+/** Row shape for the quotes list table (admin + /dharmesh). */
+export type QuoteListRow = {
+  id: number;
+  quoteNumber: string;
+  version: number;
+  client: string;
+  location: string;
+  date: string;
+  template: QuoteTemplate;
+  total: number;
+  optionCount: number;
+};
 
 /**
  * A hydrated quote. Options are parsed per template ("business" uses options,
@@ -43,6 +58,33 @@ export async function listQuotes(): Promise<Quote[]> {
     console.warn("[quotes] list failed", e);
     return [];
   }
+}
+
+/** Load all quotes as list rows (total = first option's total). */
+export async function loadQuoteRows(): Promise<QuoteListRow[]> {
+  const quotes = await listQuotes();
+  return quotes.map((q) => {
+    const optionCount = q.template === "smart_office" ? q.smartOptions.length : q.options.length;
+    const total =
+      q.template === "smart_office"
+        ? q.smartOptions[0]
+          ? computeSmartTotals(q.smartOptions[0].smartItems, q.gst_percent).totalAmount
+          : 0
+        : q.options[0]
+          ? computeTotals(q.options[0].items, q.gst_percent).totalAmount
+          : 0;
+    return {
+      id: q.id,
+      quoteNumber: q.quote_number,
+      version: q.version,
+      client: q.client_name,
+      location: q.client_location,
+      date: q.quote_date,
+      template: q.template,
+      total,
+      optionCount,
+    };
+  });
 }
 
 export async function getQuote(id: number): Promise<Quote | null> {

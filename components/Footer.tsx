@@ -16,7 +16,7 @@ const POPULAR_CATEGORIES = [
 
 export function Footer() {
   const pathname = usePathname() ?? "/";
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/dharmesh")) return null;
 
   const year = new Date().getFullYear();
   const telHref = `tel:${siteConfig.companyPhone.replace(/\s/g, "")}`;

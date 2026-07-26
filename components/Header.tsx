@@ -12,7 +12,7 @@ function isActive(pathname: string, prefix: string): boolean {
 
 export function Header() {
   const pathname = usePathname() ?? "/";
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/dharmesh")) return null;
 
   const categoryEntries = Object.entries(productCategories);
   const columnsCount = 4;

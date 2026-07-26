@@ -27,6 +27,7 @@ type Props = {
     options: BusinessOption[];
   };
   productLinks?: Array<{ name: string; url: string }>;
+  basePath?: string;
   justCreated?: boolean;
 };
 
@@ -46,7 +47,7 @@ function blankOption(): BusinessOption {
   return { title: "", items: [blankItem()] };
 }
 
-export function QuoteForm({ id, quoteNumber, version, defaults, productLinks = [], justCreated }: Props) {
+export function QuoteForm({ id, quoteNumber, version, defaults, productLinks = [], basePath = "/admin/quotes", justCreated }: Props) {
   const [result, action, pending] = useActionState(saveQuote, INITIAL);
   const linkMap = useMemo(
     () => new Map(productLinks.map((p) => [p.name.trim().toLowerCase(), p.url])),
@@ -110,6 +111,7 @@ export function QuoteForm({ id, quoteNumber, version, defaults, productLinks = [
     <form action={action} ref={formRef}>
       <input type="hidden" name="id" value={id ?? 0} />
       <input type="hidden" name="template" value="business" />
+      <input type="hidden" name="base_path" value={basePath} />
       <input type="hidden" name="items" value={JSON.stringify(cleanOptions)} />
       {productLinks.length > 0 && (
         <datalist id="sb-product-list">
@@ -267,7 +269,7 @@ export function QuoteForm({ id, quoteNumber, version, defaults, productLinks = [
         ) : (
           <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>Download buttons appear after you create the quote.</span>
         )}
-        <Link href="/admin/quotes" style={{ marginLeft: "auto", fontSize: "0.85rem", color: "#64748b" }}>← Back to all quotes</Link>
+        <Link href={basePath} style={{ marginLeft: "auto", fontSize: "0.85rem", color: "#64748b" }}>← Back to all quotes</Link>
       </div>
     </form>
   );

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "syncbyte_admin";
+const DHARMESH_COOKIE = "syncbyte_dharmesh";
 const MAX_AGE_SECONDS = 60 * 60 * 8; // 8 hours
 
 function getSecret(): string {
@@ -52,18 +53,18 @@ function decode(token: string): Session | null {
   return { username, exp };
 }
 
-export async function getSession(): Promise<Session | null> {
+export async function getSession(cookieName: string = COOKIE_NAME): Promise<Session | null> {
   const c = await cookies();
-  const token = c.get(COOKIE_NAME)?.value;
+  const token = c.get(cookieName)?.value;
   if (!token) return null;
   return decode(token);
 }
 
-export async function setSession(username: string): Promise<void> {
+export async function setSession(username: string, cookieName: string = COOKIE_NAME): Promise<void> {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS;
   const token = encode({ username, exp });
   const c = await cookies();
-  c.set(COOKIE_NAME, token, {
+  c.set(cookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -72,7 +73,20 @@ export async function setSession(username: string): Promise<void> {
   });
 }
 
-export async function clearSession(): Promise<void> {
+export async function clearSession(cookieName: string = COOKIE_NAME): Promise<void> {
   const c = await cookies();
-  c.delete(COOKIE_NAME);
+  c.delete(cookieName);
+}
+
+// ── Dharmesh session (separate, quote-only login at /dharmesh) ────────────────
+export const getDharmeshSession = () => getSession(DHARMESH_COOKIE);
+export const setDharmeshSession = (username: string) => setSession(username, DHARMESH_COOKIE);
+export const clearDharmeshSession = () => clearSession(DHARMESH_COOKIE);
+
+/**
+ * Anyone allowed to use the quotation builder: a main admin OR the Dharmesh
+ * quote-only user. Used to guard quote actions and the PDF/Word download routes.
+ */
+export async function hasQuoteAccess(): Promise<Session | null> {
+  return (await getSession()) ?? (await getDharmeshSession());
 }

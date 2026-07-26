@@ -10,7 +10,7 @@ const SERVICES_TEXT =
 
 export function ServicesTicker() {
   const pathname = usePathname() ?? "/";
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/dharmesh")) return null;
 
   return (
     <div className="services-ticker" aria-label="Services we offer">

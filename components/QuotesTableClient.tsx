@@ -25,7 +25,13 @@ function prettyDate(iso: string): string {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : iso;
 }
 
-export function QuotesTableClient({ quotes }: { quotes: QuoteRowView[] }) {
+export function QuotesTableClient({
+  quotes,
+  basePath = "/admin/quotes",
+}: {
+  quotes: QuoteRowView[];
+  basePath?: string;
+}) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -145,7 +151,7 @@ export function QuotesTableClient({ quotes }: { quotes: QuoteRowView[] }) {
                 </td>
                 <td style={{ padding: "10px 12px" }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <Link href={`/admin/quotes/${q.id}/edit`} title="Edit" style={iconLink("#1a365d")}>
+                    <Link href={`${basePath}/${q.id}/edit`} title="Edit" style={iconLink("#1a365d")}>
                       <i className="fas fa-pen" />
                     </Link>
                     <a href={`/admin/quotes/${q.id}/pdf`} title="PDF" style={iconLink("#dc2626")}>
@@ -156,6 +162,7 @@ export function QuotesTableClient({ quotes }: { quotes: QuoteRowView[] }) {
                     </a>
                     <form action={duplicateQuote} style={{ display: "inline" }}>
                       <input type="hidden" name="id" value={q.id} />
+                      <input type="hidden" name="base_path" value={basePath} />
                       <button type="submit" title="Duplicate" style={iconBtn("#7c3aed")}>
                         <i className="fas fa-copy" />
                       </button>

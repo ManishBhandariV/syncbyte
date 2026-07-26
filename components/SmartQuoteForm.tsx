@@ -27,6 +27,7 @@ type Props = {
     notes: string;
     smartOptions: SmartOption[];
   };
+  basePath?: string;
   justCreated?: boolean;
 };
 
@@ -41,7 +42,7 @@ function blankOption(): SmartOption {
   return { title: "", smartItems: [blankItem()] };
 }
 
-export function SmartQuoteForm({ id, quoteNumber, version, defaults, justCreated }: Props) {
+export function SmartQuoteForm({ id, quoteNumber, version, defaults, basePath = "/admin/quotes", justCreated }: Props) {
   const [result, action, pending] = useActionState(saveQuote, INITIAL);
   const [options, setOptions] = useState<SmartOption[]>(
     defaults.smartOptions.length > 0 ? defaults.smartOptions.map((o) => ({ ...o, smartItems: [...o.smartItems] })) : [blankOption()],
@@ -90,6 +91,7 @@ export function SmartQuoteForm({ id, quoteNumber, version, defaults, justCreated
     <form action={action} ref={formRef}>
       <input type="hidden" name="id" value={id ?? 0} />
       <input type="hidden" name="template" value="smart_office" />
+      <input type="hidden" name="base_path" value={basePath} />
       <input type="hidden" name="items" value={JSON.stringify(cleanOptions)} />
 
       {justCreated && (
@@ -219,7 +221,7 @@ export function SmartQuoteForm({ id, quoteNumber, version, defaults, justCreated
         ) : (
           <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>Download buttons appear after you create the quote.</span>
         )}
-        <Link href="/admin/quotes" style={{ marginLeft: "auto", fontSize: "0.85rem", color: "#64748b" }}>← Back to all quotes</Link>
+        <Link href={basePath} style={{ marginLeft: "auto", fontSize: "0.85rem", color: "#64748b" }}>← Back to all quotes</Link>
       </div>
     </form>
   );

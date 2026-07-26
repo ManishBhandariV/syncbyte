@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { hasQuoteAccess } from "@/lib/auth";
 import { getQuote, toInput } from "@/lib/data/quotes-server";
 import { fullQuoteId } from "@/lib/data/quotes";
 import { renderQuotePdf } from "@/lib/quote/pdf";
@@ -11,7 +11,7 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
+  const session = await hasQuoteAccess();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
