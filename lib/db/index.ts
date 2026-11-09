@@ -24,19 +24,43 @@ export async function getDb(): Promise<DbDriver> {
   return driver;
 }
 
+/**
+ * Seeds the admin accounts from environment variables.
+ *
+ * These used to fall back to literal default passwords. The repository is
+ * public, so those defaults were working production credentials for anyone who
+ * read this file — and because seedUser() below is a no-op once the username
+ * exists, setting the env vars later does NOT change an already-seeded account.
+ * Rotate the stored hash with scripts/rotate-admin-password.mjs.
+ *
+ * Seeding now fails closed: with no password configured, no account is created.
+ */
 async function seedUsers(driver: DbDriver): Promise<void> {
-  await seedUser(
-    driver,
-    process.env.ADMIN_USERNAME ?? "admin",
-    process.env.ADMIN_PASSWORD ?? "syncbyte@admin",
-    "admin",
-  );
+  await seedUserFromEnv(driver, "ADMIN", "admin", "admin");
   // Dharmesh: quote-only login. Password is bcrypt-hashed in the DB, same as admin.
+  await seedUserFromEnv(driver, "DHARMESH", "Syncbyte", "dharmesh");
+}
+
+async function seedUserFromEnv(
+  driver: DbDriver,
+  prefix: "ADMIN" | "DHARMESH",
+  defaultUsername: string,
+  role: string,
+): Promise<void> {
+  const password = process.env[`${prefix}_PASSWORD`];
+  if (!password) {
+    console.warn(
+      `[db] ${prefix}_PASSWORD is not set — skipping the "${role}" seed. ` +
+        `Existing accounts are unaffected; a fresh database will have no ` +
+        `"${role}" login until the variable is configured.`,
+    );
+    return;
+  }
   await seedUser(
     driver,
-    process.env.DHARMESH_USERNAME ?? "Syncbyte",
-    process.env.DHARMESH_PASSWORD ?? "Kanan@123",
-    "dharmesh",
+    process.env[`${prefix}_USERNAME`] ?? defaultUsername,
+    password,
+    role,
   );
 }
 
