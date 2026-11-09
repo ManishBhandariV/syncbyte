@@ -369,42 +369,50 @@ export async function deleteReview(formData: FormData): Promise<void> {
 }
 
 // ── Gallery: project photos ───────────────────────────────────────────────────
-function requireBlob(): void {
+export async function uploadGalleryImage(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return RESULT_ERR("Unauthorized.");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const displayOrder = Number(formData.get("display_order") ?? 0);
+  if (!title) return RESULT_ERR("Title is required.");
+  const file = formData.get("image");
+  const fileErr = validateUploadedFile(file, "Gallery image");
+  if (fileErr) return RESULT_ERR(fileErr);
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error(
+    return RESULT_ERR(
       "Vercel Blob isn't configured. Install Blob on Vercel " +
         "(Dashboard → Storage → Create → Blob → Connect to project) — " +
         "it auto-injects BLOB_READ_WRITE_TOKEN.",
     );
   }
-}
-
-export async function uploadGalleryImage(formData: FormData): Promise<void> {
-  const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
-
-  const title = String(formData.get("title") ?? "").trim();
-  const location = String(formData.get("location") ?? "").trim();
-  const displayOrder = Number(formData.get("display_order") ?? 0);
-  const file = formData.get("image") as File | null;
-  if (!title || !file || file.size === 0) return;
-
-  requireBlob();
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-  const safeTitle = toSlug(title) || "image";
-  const blob = await put(
-    `gallery/${safeTitle}-${Date.now()}.${ext}`,
-    file,
-    { access: "public", contentType: file.type || undefined },
-  );
-
-  const db = await getDb();
-  await db.run(
-    "INSERT INTO gallery_images (image_url, title, location, display_order) VALUES (?, ?, ?, ?)",
-    [blob.url, title, location || null, displayOrder],
-  );
-  revalidatePath("/admin/gallery");
-  revalidatePath("/gallery");
+  try {
+    const f = file as File;
+    const ext = f.name.includes(".") ? f.name.split(".").pop() : "jpg";
+    const safeTitle = toSlug(title) || "image";
+    const blob = await put(
+      `gallery/${safeTitle}-${Date.now()}.${ext}`,
+      f,
+      { access: "public", contentType: f.type || undefined },
+    );
+    const db = await getDb();
+    await db.run(
+      "INSERT INTO gallery_images (image_url, title, location, display_order) VALUES (?, ?, ?, ?)",
+      [blob.url, title, location || null, displayOrder],
+    );
+    revalidatePath("/admin/gallery");
+    revalidatePath("/gallery");
+    return RESULT_OK("Gallery image added.");
+  } catch (e) {
+    // A blocked/suspended Blob store surfaces here as BlobAccessError — show the
+    // admin a message instead of crashing the page with an unhandled rejection.
+    console.error("[uploadGalleryImage]", e);
+    return RESULT_ERR(`Upload failed: ${(e as Error).message}`);
+  }
 }
 
 export async function updateGalleryImage(formData: FormData): Promise<void> {

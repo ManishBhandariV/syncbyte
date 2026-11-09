@@ -2,15 +2,19 @@
 
 import Image from "next/image";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import {
   uploadGalleryImage,
   updateGalleryImage,
   deleteGalleryImage,
   saveGalleryVideo,
   deleteGalleryVideo,
+  type ActionResult,
 } from "@/app/admin/actions";
+import { FormBanner } from "@/components/FormBanner";
 import type { GalleryImage, GalleryVideo } from "@/lib/db/types";
+
+const INITIAL: ActionResult | null = null;
 
 const cardStyle: React.CSSProperties = {
   background: "#fff",
@@ -36,6 +40,10 @@ export function GalleryAdminClient({
 }) {
   const [editingImage, setEditingImage] = useState<GalleryImage | null>(null);
   const [editingVideo, setEditingVideo] = useState<Partial<GalleryVideo> | null>(null);
+  const [uploadResult, uploadAction, uploading] = useActionState(
+    uploadGalleryImage,
+    INITIAL,
+  );
 
   return (
     <>
@@ -50,8 +58,10 @@ export function GalleryAdminClient({
           </p>
         </div>
 
+        <FormBanner result={uploadResult} />
+
         <form
-          action={uploadGalleryImage}
+          action={uploadAction}
           encType="multipart/form-data"
           style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr auto 1fr auto", gap: 10, alignItems: "end", marginBottom: 20 }}
         >
@@ -75,10 +85,13 @@ export function GalleryAdminClient({
             type="submit"
             style={{
               background: "#10b981", color: "#fff", border: "none", borderRadius: 8,
-              padding: "8px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+              padding: "8px 18px", fontSize: "0.85rem", fontWeight: 600,
+              cursor: uploading ? "wait" : "pointer", opacity: uploading ? 0.7 : 1,
             }}
+            disabled={uploading}
           >
-            <i className="fas fa-upload" /> Upload
+            <i className={`fas ${uploading ? "fa-spinner fa-spin" : "fa-upload"}`} />{" "}
+            {uploading ? "Uploading…" : "Upload"}
           </button>
         </form>
 
