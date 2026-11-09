@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BackToTop } from "@/components/BackToTop";
 import { ServicesTicker } from "@/components/ServicesTicker";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: {
@@ -73,6 +74,7 @@ gtag('config', '${siteConfig.gaMeasurementId}');`}
             style={{ display: "none", visibility: "hidden" }}
           />
         </noscript>
+        <Analytics />
         <Header />
         <main className="main-content">{children}</main>
         <Footer />

@@ -119,3 +119,32 @@ reduction is far larger.
 Third-party images are deliberately left as plain `<img>` — Google branding logos,
 Google review avatars, and YouTube thumbnails. Routing those through the optimizer
 would consume the Hobby transformation quota with no Blob benefit.
+
+## Blocking crawlers on the Blob store
+
+Public Blob URLs are crawlable, and every crawl is Blob data transfer with no SEO
+value — the product pages on syncbyte.in are what should be indexed, not the raw
+assets. With 629 MB across 123 public blobs, bot traffic is a plausible slice of
+the ~16x amplification between stored bytes (629 MB) and transferred bytes (10 GB).
+
+Upload `scripts/blob-robots.txt` to the **root of the store** (not the website):
+
+```
+vercel blob put scripts/blob-robots.txt --pathname robots.txt --access public --force
+```
+
+This has to wait until the store is un-suspended — writes to a blocked store fail
+with `BlobStoreSuspendedError`. Do it in the same sitting as the upgrade or quota
+reset, before re-uploading the originals.
+
+## Analytics
+
+`<Analytics />` from `@vercel/analytics/next` is wired into `app/layout.tsx`, but
+Web Analytics must also be switched on in the Vercel dashboard (Project ->
+Analytics -> Enable) before it collects anything — that toggle is not exposed by
+the API or CLI.
+
+Note the overlap: GTM and GA4 are already in the layout, so pageview data exists
+today in Google Analytics. Vercel Web Analytics is worth having because it is what
+Vercel's own usage/observability APIs read from, but it is not the only source of
+traffic numbers.
