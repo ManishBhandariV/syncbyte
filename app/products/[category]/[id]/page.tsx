@@ -14,6 +14,7 @@ import { ProductTabs } from "@/components/ProductTabs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { getDb } from "@/lib/db";
 import type { ProductSpec, ProductDownload, ProductFeature } from "@/lib/db/types";
+import { usableAssetUrl } from "@/lib/blob-status";
 
 // Cache indefinitely — only rebuild on a new deploy or when an admin edit calls
 // revalidatePath("/products", "layout"). No idle/background DB hits.
@@ -101,10 +102,14 @@ export default async function ProductDetailPage({
       "SELECT * FROM product_specs WHERE product_id = ? ORDER BY display_order",
       [product.id],
     );
-    dbDownloads = await db.all<ProductDownload>(
+    const downloadRows = await db.all<ProductDownload>(
       "SELECT * FROM product_downloads WHERE product_id = ? ORDER BY display_order",
       [product.id],
     );
+    dbDownloads = downloadRows.map((d) => ({
+      ...d,
+      file_url: usableAssetUrl(d.file_url) ?? "",
+    }));
     dbFeatures = await db.all<ProductFeature>(
       "SELECT * FROM product_features WHERE product_id = ? ORDER BY display_order",
       [product.id],
@@ -119,13 +124,17 @@ export default async function ProductDetailPage({
   // Wire the prominent "Download Catalogue" button to whatever the admin has
   // uploaded. Prefer a download whose title contains "catalogue" / "catalog"
   // (or "datasheet" as a sensible fallback), otherwise just take the first.
-  if (dbDownloads.length > 0) {
+  const reachableDownloads = dbDownloads.filter((d) => d.file_url);
+  if (reachableDownloads.length > 0) {
     const cat =
-      dbDownloads.find((d) => /catalog|catalogue/i.test(d.file_title)) ??
-      dbDownloads.find((d) => /datasheet/i.test(d.file_title)) ??
-      dbDownloads[0];
+      reachableDownloads.find((d) => /catalog|catalogue/i.test(d.file_title)) ??
+      reachableDownloads.find((d) => /datasheet/i.test(d.file_title)) ??
+      reachableDownloads[0];
     cataloguePath = cat.file_url;
   }
+  // /public/product-catalogues is not bundled, so the default path is a 404.
+  // Hide the button entirely rather than ship a broken download.
+  const hasCatalogue = reachableDownloads.length > 0;
 
   // Specifications: admin-managed DB rows take over completely if any exist;
   // otherwise show the canonical default set so the page never looks empty.
@@ -179,15 +188,17 @@ export default async function ProductDetailPage({
               </div>
 
               <div className="product-actions">
-                <a
-                  href={cataloguePath}
-                  className="btn btn-primary btn-lg"
-                  target="_blank"
-                  rel="noopener"
-                  download
-                >
-                  <i className="fas fa-download" /> Download Catalogue
-                </a>
+                {hasCatalogue && (
+                  <a
+                    href={cataloguePath}
+                    className="btn btn-primary btn-lg"
+                    target="_blank"
+                    rel="noopener"
+                    download
+                  >
+                    <i className="fas fa-download" /> Download Catalogue
+                  </a>
+                )}
                 <Link
                   href={`/contact?product=${encodeURIComponent(name)}`}
                   className="btn btn-secondary btn-lg"

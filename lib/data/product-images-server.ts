@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb } from "@/lib/db";
 import type { ProductImage } from "@/lib/db/types";
+import { withoutBlockedBlobs } from "@/lib/blob-status";
 
 export type ProductImagesMap = Map<string, string[]>;
 
@@ -12,7 +13,7 @@ export async function loadProductImagesMap(): Promise<ProductImagesMap> {
     const rows = await db.all<ProductImage>(
       "SELECT product_id, image_url FROM product_images ORDER BY product_id, display_order, id",
     );
-    for (const r of rows) {
+    for (const r of withoutBlockedBlobs(rows, (x) => x.image_url)) {
       const list = map.get(r.product_id) ?? [];
       list.push(r.image_url);
       map.set(r.product_id, list);
@@ -27,10 +28,11 @@ export async function loadProductImagesMap(): Promise<ProductImagesMap> {
 export async function loadProductImages(productId: string): Promise<ProductImage[]> {
   try {
     const db = await getDb();
-    return await db.all<ProductImage>(
+    const rows = await db.all<ProductImage>(
       "SELECT * FROM product_images WHERE product_id = ? ORDER BY display_order, id",
       [productId],
     );
+    return withoutBlockedBlobs(rows, (r) => r.image_url);
   } catch (e) {
     console.warn("[product-images] single read failed", e);
     return [];

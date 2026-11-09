@@ -6,6 +6,49 @@ const EXTS = ["webp", "png", "jpg", "PNG", "jpeg"] as const;
 
 const cache = new Map<string, string | null>();
 
+/** Same slug rule as lib/data/products.ts — duplicated to avoid a server/client cycle. */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * slug -> filename index of /public/images/products, built once per process.
+ *
+ * Exact `${productId}.${ext}` matching is case-sensitive on Vercel's Linux
+ * filesystem, so `8-BL99-U.webp` never resolved for the id `8-bl99-u` in
+ * production even though it did on Windows. Indexing by slug fixes that and
+ * means a dropped-in file only has to match the product's slug — the same
+ * name Blob uploads already use.
+ */
+let slugIndex: Map<string, string> | null = null;
+
+function getSlugIndex(): Map<string, string> {
+  if (slugIndex) return slugIndex;
+  const index = new Map<string, string>();
+  try {
+    const files = fs.readdirSync(PRODUCTS_DIR);
+    // Sort so extension precedence (EXTS order) wins deterministically when
+    // the same slug exists as both .webp and .png.
+    const rank = (f: string) => {
+      const i = EXTS.indexOf(f.slice(f.lastIndexOf(".") + 1) as (typeof EXTS)[number]);
+      return i === -1 ? EXTS.length : i;
+    };
+    for (const file of [...files].sort((a, b) => rank(a) - rank(b))) {
+      const dot = file.lastIndexOf(".");
+      if (dot <= 0) continue;
+      const slug = slugify(file.slice(0, dot));
+      if (!index.has(slug)) index.set(slug, file);
+    }
+  } catch {
+    // readonly fs may throw — an empty index just means "no bundled images"
+  }
+  slugIndex = index;
+  return index;
+}
+
 export function getProductImage(productId: string): string {
   if (cache.has(productId)) {
     return cache.get(productId) ?? placeholderImage(productId);
@@ -21,6 +64,12 @@ export function getProductImage(productId: string): string {
     } catch {
       // ignore — readonly fs on Vercel may throw on some paths
     }
+  }
+  const bySlug = getSlugIndex().get(slugify(productId));
+  if (bySlug) {
+    const url = `/images/products/${encodeURI(bySlug)}`;
+    cache.set(productId, url);
+    return url;
   }
   cache.set(productId, null);
   return placeholderImage(productId);

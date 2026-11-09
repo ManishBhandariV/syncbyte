@@ -11,6 +11,8 @@ export type DownloadFile = {
   description?: string;
   /** Direct URL (Blob). If set, used as the download href instead of /downloads/{filename}. */
   url?: string;
+  /** File exists but its host is unreachable — render a disabled button, not a dead link. */
+  unavailable?: boolean;
 };
 
 function fileIcon(ext: string): string {
@@ -89,16 +91,28 @@ export function DownloadsFilter({ files }: { files: DownloadFile[] }) {
                   )}
                 </div>
               </div>
-              <a
-                href={f.url ?? `/downloads/${encodeURIComponent(f.filename)}`}
-                className="download-btn"
-                target={f.url ? "_blank" : undefined}
-                rel={f.url ? "noopener" : undefined}
-                download
-              >
-                <i className="fas fa-download" />
-                <span>Download</span>
-              </a>
+              {f.unavailable ? (
+                <span
+                  className="download-btn"
+                  aria-disabled="true"
+                  title="This file is temporarily unavailable. Please contact us and we will email it to you."
+                  style={{ opacity: 0.55, cursor: "not-allowed" }}
+                >
+                  <i className="fas fa-clock" />
+                  <span>Temporarily unavailable</span>
+                </span>
+              ) : (
+                <a
+                  href={f.url ?? `/downloads/${encodeURIComponent(f.filename)}`}
+                  className="download-btn"
+                  target={f.url ? "_blank" : undefined}
+                  rel={f.url ? "noopener" : undefined}
+                  download
+                >
+                  <i className="fas fa-download" />
+                  <span>Download</span>
+                </a>
+              )}
             </div>
           );
         })}

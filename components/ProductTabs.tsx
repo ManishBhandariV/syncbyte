@@ -90,12 +90,19 @@ export function ProductTabs({
                 {hasCustomDownloads ? (
                   downloads!.map((dl) => {
                     const icon = DOWNLOAD_ICONS[dl.file_type] ?? "fa-file";
+                    // An empty file_url means the server blanked an unreachable
+                    // host — show the entry, but not as a clickable link.
+                    const Wrapper = dl.file_url ? "a" : "span";
                     return (
-                      <a
+                      <Wrapper
                         key={dl.id}
-                        href={dl.file_url}
-                        target="_blank"
-                        rel="noopener"
+                        {...(dl.file_url
+                          ? { href: dl.file_url, target: "_blank", rel: "noopener" }
+                          : {
+                              "aria-disabled": "true",
+                              title: "Temporarily unavailable — please contact us for this file.",
+                              style: { opacity: 0.55, cursor: "not-allowed" },
+                            })}
                         className="download-item"
                       >
                         <div className="download-icon">
@@ -109,9 +116,9 @@ export function ProductTabs({
                           </p>
                         </div>
                         <div className="download-action">
-                          <i className="fas fa-download" />
+                          <i className={`fas ${dl.file_url ? "fa-download" : "fa-clock"}`} />
                         </div>
-                      </a>
+                      </Wrapper>
                     );
                   })
                 ) : (

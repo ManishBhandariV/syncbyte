@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { getProductImage } from "@/lib/data/images";
+import { usableAssetUrl } from "@/lib/blob-status";
 import type { ProductMeta } from "@/lib/db/types";
 
 export type ProductMetaMap = Map<
@@ -53,7 +54,7 @@ export function displayName(
 }
 
 export function getMetaImage(productId: string, meta: ProductMetaMap): string | null {
-  return meta.get(productId)?.image_url ?? null;
+  return usableAssetUrl(meta.get(productId)?.image_url);
 }
 
 /**
@@ -69,8 +70,13 @@ export function bestProductImage(
   imagesMap?: Map<string, string[]>,
 ): string {
   const imgs = imagesMap?.get(productId);
-  if (imgs && imgs.length > 0) return imgs[0];
-  return meta.get(productId)?.image_url ?? getProductImage(productId);
+  if (imgs && imgs.length > 0) {
+    const usable = imgs.find((u) => usableAssetUrl(u) !== null);
+    if (usable) return usable;
+  }
+  return (
+    usableAssetUrl(meta.get(productId)?.image_url) ?? getProductImage(productId)
+  );
 }
 
 /**

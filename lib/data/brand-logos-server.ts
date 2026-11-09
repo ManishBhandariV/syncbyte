@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "@/lib/db";
 import type { BrandLogo } from "@/lib/db/types";
 import { getBrandLogo as getBrandLogoFromFs } from "@/lib/data/brands-server";
+import { usableAssetUrl } from "@/lib/blob-status";
 
 export type BrandLogoMap = Map<string, string>;
 
@@ -16,7 +17,12 @@ export async function loadBrandLogos(): Promise<BrandLogoMap> {
     const rows = await db.all<BrandLogo>(
       "SELECT brand_slug, logo_url FROM brand_logos",
     );
-    for (const r of rows) map.set(r.brand_slug, r.logo_url);
+    for (const r of rows) {
+      // A blocked Blob URL is dropped so resolveBrandLogo() falls through to
+      // the bundled logo under /public/images/brands.
+      const url = usableAssetUrl(r.logo_url);
+      if (url) map.set(r.brand_slug, url);
+    }
   } catch (e) {
     console.warn("[brand-logos] DB read failed", e);
   }

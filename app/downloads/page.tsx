@@ -5,6 +5,7 @@ import { siteConfig } from "@/lib/config";
 import { DownloadsFilter, type DownloadFile } from "@/components/DownloadsFilter";
 import { getDb } from "@/lib/db";
 import type { SiteDownload } from "@/lib/db/types";
+import { BLOB_BLOCKED, isBlobUrl, usableAssetUrl } from "@/lib/blob-status";
 
 export const metadata = { title: "Downloads" };
 // Cache indefinitely — all four admin download mutations call
@@ -24,7 +25,10 @@ async function loadDbDownloads(): Promise<DownloadFile[]> {
       size: r.file_size || "",
       category: r.category || "Other",
       description: r.description ?? undefined,
-      url: r.file_url,
+      url: usableAssetUrl(r.file_url) ?? undefined,
+      // Keep the row visible so visitors still see what exists in the
+      // catalogue, but don't hand them a link that 403s.
+      unavailable: BLOB_BLOCKED && isBlobUrl(r.file_url),
     }));
   } catch {
     return [];
