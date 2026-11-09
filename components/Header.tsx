@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { siteConfig } from "@/lib/config";
@@ -62,9 +64,13 @@ export function Header() {
         <div className="container">
           <div className="header-content">
             <Link href="/" className="logo">
-              <img
+              <Image
                 src="/images/logo.png"
                 alt={siteConfig.companyName}
+                width={200}
+                height={52}
+                preload
+                style={{ width: "auto", height: "auto", maxHeight: 52 }}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                   const next = e.currentTarget.nextElementSibling as HTMLElement | null;

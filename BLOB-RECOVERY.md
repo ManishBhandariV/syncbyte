@@ -71,15 +71,16 @@ exact casing.
 | `ur10r-1f` | rfid-readers | UR 10 R-1F |
 | `vega-w-poe` | fingerprint | VEGA+W+POE |
 
-### Brand logos (5)
+### Brand logos (3)
 
 Destination `public/images/brands/<slug>.png`. These have no bundled logo:
 
-- `biomax` — was `biomax-1779371512275.png`
 - `crew-inc` — was `crew-inc-1788976896931.jpg`
 - `mantra` — was `mantra-1779969758157.png`
 - `panasonic` — was `panasonic-1779371727416.png`
-- `zkteco` — was `zkteco-1779371682049.png`
+
+`biomax` and `zkteco` were also uploaded to Blob but already ship as
+`public/images/brands/biomax.png` and `zkteco.png`, so the fallback covers them.
 
 ### Gallery photos (1)
 
@@ -105,3 +106,16 @@ No bundled fallback. Still listed on `/downloads`, shown as "Temporarily unavail
 These static products have neither a bundled image nor a Blob upload, so they were
 already rendering the SVG placeholder: `bg-100-grey`, `c3-200`, `c3-400`, `et-2000`,
 `mantra-l1-fp-scanner`.
+
+## Image optimization
+
+All first-party images now render through `next/image` (`next.config.ts` allow-lists
+this store's host and sets a 31-day `minimumCacheTTL`). Each original is fetched from
+Blob roughly once per size variant and then served from Vercel's edge cache, instead
+of being downloaded in full by every visitor. Measured locally, a `w=640` variant is
+16-40% of the bundled original's bytes; for the full-resolution Blob uploads the
+reduction is far larger.
+
+Third-party images are deliberately left as plain `<img>` — Google branding logos,
+Google review avatars, and YouTube thumbnails. Routing those through the optimizer
+would consume the Hobby transformation quota with no Blob benefit.

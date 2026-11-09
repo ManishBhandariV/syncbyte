@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { productCategories, getCategoryUrl } from "@/lib/data/products";
 import { search } from "@/lib/data/search";
@@ -102,15 +103,16 @@ export default async function SearchPage({
                         {productResults.map((r) => (
                           <div className="product-card" key={r.url}>
                             <div className="product-image">
-                              <img
+                              <Image
                                 src={bestProductImage(
                                   r.type === "product" ? r.id : "",
                                   meta,
                                   imagesMap,
                                 )}
                                 alt={r.name}
-                                loading="lazy"
-                                decoding="async"
+                                width={320}
+                                height={240}
+                                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                               />
                               <div className="product-overlay">
                                 <Link href={r.url} className="btn btn-secondary">

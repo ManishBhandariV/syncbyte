@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useActionState } from "react";
 import {
   uploadBrandLogo,
@@ -72,7 +74,13 @@ function BrandCard({ brand }: { brand: BrandRow }) {
         }}
       >
         {brand.logo_url ? (
-          <img src={brand.logo_url} alt={brand.name} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }} />
+          <Image
+            src={brand.logo_url}
+            alt={brand.name}
+            width={180}
+            height={90}
+            style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }}
+          />
         ) : (
           <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>(no logo — text fallback shown)</span>
         )}

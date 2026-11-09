@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/config";
 import { svgPlaceholder } from "@/lib/placeholder";
@@ -18,6 +20,7 @@ export function GalleryClient({
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [failed, setFailed] = useState<Set<string>>(new Set());
 
   const showVideos = filter !== "images";
   const showImages = filter !== "videos";
@@ -120,12 +123,17 @@ export function GalleryClient({
           {images.map((img, i) => (
             <div className="image-card" key={img.file} onClick={() => setLightboxIndex(i)}>
               <div className="image-wrapper">
-                <img
-                  src={img.file.startsWith("http") || img.file.startsWith("/") ? img.file : `/images/gallery/${encodeURIComponent(img.file)}`}
+                <Image
+                  src={failed.has(img.file)
+                    ? svgPlaceholder(img.title, { width: 400, height: 300 })
+                    : img.file.startsWith("http") || img.file.startsWith("/")
+                      ? img.file
+                      : `/images/gallery/${encodeURIComponent(img.file)}`}
                   alt={img.title}
-                  onError={(e) => {
-                    e.currentTarget.src = svgPlaceholder(img.title, { width: 400, height: 300 });
-                  }}
+                  fill
+                  sizes="(max-width: 600px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  style={{ objectFit: "cover" }}
+                  onError={() => setFailed((f) => new Set(f).add(img.file))}
                 />
                 <div className="image-overlay">
                   <i className="fas fa-search-plus" />
@@ -174,16 +182,20 @@ export function GalleryClient({
         </button>
         <div className="lightbox-content">
           {current && (
-            <img
+            <Image
               src={
-                current.file.startsWith("http") || current.file.startsWith("/")
-                  ? current.file
-                  : `/images/gallery/${encodeURIComponent(current.file)}`
+                failed.has(current.file)
+                  ? svgPlaceholder(current.title, { width: 800, height: 600 })
+                  : current.file.startsWith("http") || current.file.startsWith("/")
+                    ? current.file
+                    : `/images/gallery/${encodeURIComponent(current.file)}`
               }
               alt={current.title}
-              onError={(e) => {
-                e.currentTarget.src = svgPlaceholder(current.title, { width: 800, height: 600 });
-              }}
+              width={1200}
+              height={900}
+              sizes="90vw"
+              style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "70vh" }}
+              onError={() => setFailed((f) => new Set(f).add(current.file))}
             />
           )}
           <div className="lightbox-caption">

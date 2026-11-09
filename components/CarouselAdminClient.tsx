@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useActionState } from "react";
 import {
   uploadCarouselSlide,
@@ -78,7 +80,13 @@ export function CarouselAdminClient({
         ) : (
           slides.map((s) => (
             <div key={s.id} style={{ background: "#fff", borderRadius: 12, padding: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}>
-              <img src={s.image_url} alt={s.button_label} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} />
+              <Image
+                src={s.image_url}
+                alt={s.button_label}
+                width={400}
+                height={120}
+                style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }}
+              />
               <form action={updateCarouselSlide} style={{ display: "grid", gap: 6 }}>
                 <input type="hidden" name="id" value={s.id} />
                 <input name="button_label" defaultValue={s.button_label} style={inputStyle} />

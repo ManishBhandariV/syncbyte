@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { svgPlaceholder } from "@/lib/placeholder";
@@ -26,6 +28,7 @@ const DEFAULT_SLIDES: Slide[] = [
 export function HeroCarousel({ slides }: { slides?: Slide[] }) {
   const SLIDES = slides && slides.length > 0 ? slides : DEFAULT_SLIDES;
   const [current, setCurrent] = useState(0);
+  const [failed, setFailed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -47,17 +50,21 @@ export function HeroCarousel({ slides }: { slides?: Slide[] }) {
               className={`carousel-slide ${i === current ? "active" : ""}`}
             >
               <div className="slide-content">
-                <img
-                  src={s.src}
+                <Image
+                  src={failed.has(s.src)
+                    ? svgPlaceholder(s.fallbackText.replace(/\+/g, " "), {
+                        width: 1920,
+                        height: 600,
+                        bg: "#1a365d",
+                        fg: "#ffffff",
+                      })
+                    : s.src}
                   alt={s.alt}
-                  onError={(e) => {
-                    e.currentTarget.src = svgPlaceholder(s.fallbackText.replace(/\+/g, " "), {
-                      width: 1920,
-                      height: 600,
-                      bg: "#1a365d",
-                      fg: "#ffffff",
-                    });
-                  }}
+                  fill
+                  sizes="100vw"
+                  preload={i === 0}
+                  style={{ objectFit: "cover" }}
+                  onError={() => setFailed((f) => new Set(f).add(s.src))}
                 />
                 <div className="slide-btn-wrap">
                   <Link href={s.href} className="btn btn-primary">

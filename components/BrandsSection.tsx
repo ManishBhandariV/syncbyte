@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { loadBrandLogos, resolveBrandLogo } from "@/lib/data/brand-logos-server";
 import { loadEffectiveBrands } from "@/lib/data/brands-effective";
@@ -28,7 +29,13 @@ export async function BrandsSection() {
                 title={`See all ${brand.name} products`}
               >
                 {logo ? (
-                  <img src={logo} alt={`${brand.name} logo`} loading="lazy" decoding="async" />
+                  <Image
+                    src={logo}
+                    alt={`${brand.name} logo`}
+                    width={180}
+                    height={60}
+                    style={{ width: "auto", height: "auto", maxHeight: 60, maxWidth: "100%", objectFit: "contain" }}
+                  />
                 ) : (
                   <span className="brand-card-text">{brand.name}</span>
                 )}

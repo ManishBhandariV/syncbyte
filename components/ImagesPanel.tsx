@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import {
@@ -91,7 +93,13 @@ export function ImagesPanel({
         {images.map((img, i) => (
           <div key={img.id} style={{ width: 120, textAlign: "center" }}>
             <div style={{ width: 120, height: 120, border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src={img.image_url} alt={`Image ${i + 1}`} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+              <Image
+                src={img.image_url}
+                alt={`Image ${i + 1}`}
+                width={200}
+                height={150}
+                style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              />
             </div>
             <div style={{ fontSize: "0.7rem", color: "#94a3b8", margin: "4px 0" }}>
               {i === 0 ? "Primary" : `Image ${i + 1}`}

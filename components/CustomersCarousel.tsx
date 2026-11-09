@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useRef } from "react";
 
 /**
@@ -69,7 +71,13 @@ export function CustomersCarousel({ logos }: { logos: string[] }) {
       >
         {all.map((logo, i) => (
           <div className="customer-logo" key={`${logo}-${i}`}>
-            <img src={logo} alt="Client logo" loading="lazy" decoding="async" />
+            <Image
+              src={logo}
+              alt="Client logo"
+              width={180}
+              height={100}
+              style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+            />
           </div>
         ))}
       </div>

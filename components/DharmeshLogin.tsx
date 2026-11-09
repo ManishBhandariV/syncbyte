@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useActionState } from "react";
 import { dharmeshLogin, type LoginResult } from "@/app/dharmesh/actions";
 
@@ -22,7 +24,14 @@ export function DharmeshLogin() {
     >
       <div style={{ background: "#fff", borderRadius: 14, padding: 32, width: 360, maxWidth: "100%", boxShadow: "0 12px 40px rgba(0,0,0,0.3)" }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <img src="/images/logo.png" alt="Syncbyte" style={{ height: 40, marginBottom: 8 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          <Image
+            src="/images/logo.png"
+            alt="Syncbyte"
+            width={160}
+            height={40}
+            style={{ width: "auto", height: 40, marginBottom: 8 }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
           <h1 style={{ fontSize: "1.15rem", color: "#1a365d" }}>Quotation Portal</h1>
           <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: 4 }}>Sign in to create quotations</p>
         </div>

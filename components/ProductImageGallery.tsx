@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useCallback, useEffect, useState } from "react";
 
 type Props = {
@@ -31,20 +33,27 @@ export function ProductImageGallery({ images, productName }: Props) {
   return (
     <div className="product-detail-image">
       <div className="main-image">
-        <img
+        <Image
           id="mainProductImage"
           src={thumbs[active]}
           alt={productName}
+          width={800}
+          height={600}
+          preload
+          sizes="(max-width: 768px) 100vw, 600px"
+          style={{ width: "100%", height: 300, objectFit: "contain" }}
           onClick={() => setLightboxOpen(true)}
         />
       </div>
       {thumbs.length > 1 && (
         <div className="image-thumbnails">
           {thumbs.map((src, i) => (
-            <img
+            <Image
               key={i}
               src={src}
               alt={`${productName} ${i + 1}`}
+              width={80}
+              height={60}
               className={`thumbnail ${i === active ? "active" : ""}`}
               onClick={() => setActive(i)}
             />
@@ -68,9 +77,13 @@ export function ProductImageGallery({ images, productName }: Props) {
           >
             <i className="fas fa-times" />
           </button>
-          <img
+          <Image
             src={thumbs[active]}
             alt={productName}
+            width={1400}
+            height={1050}
+            sizes="92vw"
+            style={{ width: "auto", height: "auto", maxWidth: "92vw", maxHeight: "88vh", objectFit: "contain" }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>

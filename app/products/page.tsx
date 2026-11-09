@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/lib/config";
 import {
@@ -178,7 +179,13 @@ export default async function ProductsPage({
                         return (
                         <div className="product-card product-card-compact" key={product.id}>
                           <div className="product-image">
-                            <img src={bestProductImage(product.id, meta, imagesMap)} alt={name} loading="lazy" decoding="async" />
+                            <Image
+                              src={bestProductImage(product.id, meta, imagesMap)}
+                              alt={name}
+                              width={320}
+                              height={240}
+                              style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                            />
                             <div className="product-overlay">
                               <Link
                                 href={getProductUrl(slug, product.id)}

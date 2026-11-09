@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { BrandsSection } from "@/components/BrandsSection";
@@ -106,7 +107,13 @@ export default async function HomePage() {
             {featuredItems.map((item) => (
               <div className="product-card" key={item.id}>
                 <div className="product-image">
-                  <img src={bestProductImage(item.id, meta, imagesMap)} alt={item.name} loading="lazy" decoding="async" />
+                  <Image
+                    src={bestProductImage(item.id, meta, imagesMap)}
+                    alt={item.name}
+                    width={320}
+                    height={240}
+                    style={{ width: "auto", height: "auto", maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                  />
                   <div className="product-overlay">
                     <Link
                       href={getProductUrl(item.categorySlug, item.id)}
